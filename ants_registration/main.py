@@ -9,6 +9,7 @@ import traceback
 from collections import OrderedDict
 from typing import Any, Dict, List, Union
 
+import ants
 import numpy as np
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
@@ -69,7 +70,7 @@ class Window(QMainWindow):
         info_layout.addWidget(self.moving_stack)
 
         # Create dynamic widgets
-        self.align_3d_widget = VolumeAlignmentWidget()
+        self.align_3d_widget = AlignVolumeWidget()
         self.show_raw_2d_widget = Display2DWidget()
         self.registration_widget = RegistrationWidget()
         self.show_reg_3d_widget = DisplayVolumeWidget()
@@ -112,12 +113,43 @@ class Window(QMainWindow):
         registration.fixed.changed.connect(self.align_3d_widget.update_fixed_stack)
         registration.fixed.resolution_changed.connect(self.align_3d_widget.apply_fixed_stack_scale)
         registration.fixed.resolution_changed.connect(self.align_3d_widget.reset_view)
+        registration.fixed.changed.connect(self.check_existing_metadata)
         # Moving
         self.moving_stack.path_changed.connect(registration.moving.load_file)
         self.moving_stack.resolution.changed.connect(registration.moving.set_resolution)
         registration.moving.changed.connect(self.align_3d_widget.update_moving_stack)
         registration.moving.resolution_changed.connect(self.align_3d_widget.apply_moving_stack_scale)
         registration.moving.resolution_changed.connect(self.align_3d_widget.reset_view)
+        registration.moving.changed.connect(self.moving_stack_selected)
+
+    def moving_stack_selected(self):
+        """Set working directory to path containing the moving stack and attempt to load saved registration data
+        """
+
+        working_dir = '/'.join(registration.moving.file_path.as_posix().split('/')[:-1])
+        print(f'Set working directory to {working_dir}')
+        os.chdir(working_dir)
+
+        self.check_existing_metadata()
+
+    def check_existing_metadata(self):
+
+        if registration.fixed.data is None or registration.moving.data is None:
+            return
+
+        meta_path = f'{registration.get_save_path()}/metadata.yaml'
+        if not os.path.exists(meta_path):
+            return
+
+        meta = yaml.safe_load(open(meta_path, 'r'))
+        print(f'Found metadata: {meta}')
+
+        self.fixed_stack.resolution.set_resolution(*meta['fixed_resolution'])
+        self.moving_stack.resolution.set_resolution(*meta['moving_resolution'])
+        registration.moving.translation[:] = meta['init_translation']
+        registration.moving.z_rotation = meta['init_z_rotation']
+
+        self.align_3d_widget.update_transform()
 
     def add_dynamic_widget(self, name: str, widget: QWidget, selected: bool = False):
         # Set up widget
@@ -165,7 +197,7 @@ class ControlPanel(QGroupBox):
         main_layout.addStretch()
 
 
-class VolumeAlignmentWidget(gl.GLViewWidget):
+class AlignVolumeWidget(gl.GLViewWidget):
     translation_keys = [
         Qt.Key.Key_C,
         Qt.Key.Key_X,
@@ -387,10 +419,7 @@ class DisplayVolumeWidget(gl.GLViewWidget):
         self.fixed_vol = gl.GLVolumeItem(fixed_im, sliceDensity=1, smooth=True, glOptions='additive')
         self.addItem(self.fixed_vol)
 
-        # Get stack data
-        warped_stack = Stack()
-        warped_stack.data = registration.result['warpedmovout'].numpy()
-        warped_im = warped_stack.data_rgba(color=(0., 1., 0.))
+        warped_im = registration.registered_stack()
 
         # Add new volume item
         self.removeItem(self.moving_vol)
@@ -535,13 +564,6 @@ class RegistrationWidget(QGroupBox):
 
         else:
 
-            # Make sure that these are tuples
-            #  ANTs does not like lists for these and yaml doesn't do tuples by default
-            settings['reg_iterations'] = tuple(settings['reg_iterations'])
-            settings['aff_iterations'] = tuple(settings['aff_iterations'])
-            settings['aff_shrink_factors'] = tuple(settings['aff_shrink_factors'])
-            settings['aff_smoothing_sigmas'] = tuple(settings['aff_smoothing_sigmas'])
-
             # Set
             self.settings = settings
 
@@ -570,14 +592,15 @@ class RegistrationWidget(QGroupBox):
 
         # Reset counter and clear log file
         self.log_line_count = 0
-        with open('test.txt', 'w') as f:
+        # {save_path}/registration.log
+        with open(f'{registration.get_save_path()}/registration.log', 'w') as f:
             pass
 
         # Start
         self.thread.start()
 
     def update_log(self):
-        with open('test.txt', 'r') as f:
+        with open(f'{registration.get_save_path()}/registration.log', 'r') as f:
             for line in f.readlines()[self.log_line_count:]:
                 self.log_text.append(line.strip('\n'))
                 self.log_line_count += 1
@@ -617,11 +640,6 @@ if __name__ == '__main__':
 
     default_reg_settings: Dict[str, Any] = dict(
         type_of_transform="Affine",
-        initial_transform=None,
-        outprefix="",
-        mask=None,
-        moving_mask=None,
-        mask_all_stages=False,
         grad_step=0.2,
         flow_sigma=3,
         total_sigma=0,
@@ -647,8 +665,8 @@ if __name__ == '__main__':
     window = Window()
     window.show()
 
-    registration.fixed.load_file(
-        'Z:/cluster/scripts/ants_registration/ants_registration/reference_data/2024-11-12_jf7_standard_stack/2024-11-12_jf7_5dpf_1p0magn_35laser_600gain_6avg_reference_tectum_top_140_to_0mu_0p88_zstep.tif')
-    registration.moving.load_file(
-        'Z:/cluster/scripts/ants_registration/ants_registration/reference_data/2024-11-12_jf7_standard_stack/2024-11-12_jf7_5dpf_right_hemi_1p4magn_35laser_600gain_6avg_reference_tectum_top_140_to_0mu_0p63_zstep.tif')
+    # window.fixed_stack.path_changed.emit(
+    #     'Z:/cluster/scripts/ants_registration/ants_registration/reference_data/2024-11-12_jf7_standard_stack/2024-11-12_jf7_5dpf_1p0magn_35laser_600gain_6avg_reference_tectum_top_140_to_0mu_0p88_zstep.tif')
+    # window.moving_stack.path_changed.emit(
+    #     'Z:/cluster/scripts/ants_registration/ants_registration/reference_data/2024-11-12_jf7_standard_stack/2024-11-12_jf7_5dpf_right_hemi_1p4magn_35laser_600gain_6avg_reference_tectum_top_140_to_0mu_0p63_zstep.tif')
     sys.exit(app.exec())

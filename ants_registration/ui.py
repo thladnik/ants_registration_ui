@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List
+
 from PySide6 import QtCore
 from PySide6.QtWidgets import *
 
@@ -92,29 +94,39 @@ class StackResolution(QWidget):
         main_layout = QHBoxLayout()
         self.setLayout(main_layout)
 
+        self.edit_fields = []
+
         self.x_edit = QLineEdit()
+        self.edit_fields.append(self.x_edit)
         self.x_label = QLabel('Res X [my]')
         main_layout.addWidget(self.x_label)
-        self.x_edit.editingFinished.connect(lambda: self.update_resolution('x'))
+        self.x_edit.editingFinished.connect(lambda: self.resolution_updated('x'))
         main_layout.addWidget(self.x_edit)
         self.y_edit = QLineEdit()
+        self.edit_fields.append(self.y_edit)
         self.y_label = QLabel('Res Y [my]')
         main_layout.addWidget(self.y_label)
-        self.y_edit.editingFinished.connect(lambda: self.update_resolution('y'))
+        self.y_edit.editingFinished.connect(lambda: self.resolution_updated('y'))
         main_layout.addWidget(self.y_edit)
         self.z_edit = QLineEdit()
+        self.edit_fields.append(self.z_edit)
         self.z_label = QLabel('Res Z [my]')
         main_layout.addWidget(self.z_label)
-        self.z_edit.editingFinished.connect(lambda: self.update_resolution('z'))
+        self.z_edit.editingFinished.connect(lambda: self.resolution_updated('z'))
         main_layout.addWidget(self.z_edit)
         self.cubic_btn = QPushButton('x^3')
         self.cubic_btn.clicked.connect(self.make_cubic)
         main_layout.addWidget(self.cubic_btn)
 
+    def set_resolution(self, *args: List[float]):
+        for i, v in enumerate(args):
+            self.edit_fields[i].setText(str(v))
+            self.edit_fields[i].editingFinished.emit()
+
     def get_edit_field(self, axis: str) -> QLineEdit:
         return getattr(self, f'{axis}_edit')
 
-    def update_resolution(self, axis: str):
+    def resolution_updated(self, axis: str):
         # Get and parse value
         value = eval(self.get_edit_field(axis).text())
 

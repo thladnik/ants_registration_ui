@@ -33,6 +33,9 @@ class Stack(QtCore.QObject):
     def shape(self) -> np.ndarray:
         return np.array(self.data.shape)
 
+    def get_folder(self) -> Path:
+        return Path('/'.join(self.file_path.as_posix().split('/')[:-1]))
+
     def data_rgba(self,
                   percentile: int = 90,
                   alpha: float = 0.02,
