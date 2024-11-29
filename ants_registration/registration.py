@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import multiprocessing
 import os
 import pickle
@@ -20,7 +22,7 @@ class Registration(QtCore.QObject):
     file_path_changed = QtCore.Signal()
     changed = QtCore.Signal()
 
-    result: Dict[str, Any] = {}
+    result: Dict[str, Any] = None
 
     def __init__(self):
         QtCore.QObject.__init__(self)
@@ -30,30 +32,13 @@ class Registration(QtCore.QObject):
 
         self.file_path: Union[str, None] = None
 
-    def load(self, file_path: str):
-        # TODO: load reg
+        self.settings: Dict[str, Any] = default_reg_settings.copy()
 
-        if self.file_path is not None:
-            self.close()
-
-        self.file_path = file_path
-
-    def close(self):
-        # TODO: close stuff
-
-        self.file_path = None
-
-    def save(self, file_path: str = None):
-
-        if self.file_path is None and file_path is not None:
-            raise ValueError('No file path to save registration')
-
-        if file_path is None:
-            file_path = self.file_path
-
-        # TODO: save registration
-
-    def get_save_path(self):
+    @property
+    def save_path(self):
+        """Return the path where registration results and metadata are saved
+           (relative to the directory containing the moving stack)
+        """
         # Create save path based on moving and fixed file paths
         moving_name = self.moving.file_path.as_posix().split('/')[-1]
         reference_name = self.fixed.file_path.as_posix().split('/')[-1]
@@ -61,7 +46,19 @@ class Registration(QtCore.QObject):
         # Combine and create
         path = '/'.join(['ants_registration', moving_name, reference_name])
 
+        if not os.path.exists(path):
+            print(f'Create save path {path}')
+            os.makedirs(path, exist_ok=True)
+
         return path
+
+    def data_complete(self) -> bool:
+        """Return true if both reference and moving stack are set"""
+        return self.fixed.file_path is not None and self.moving.file_path is not None
+
+    def exists(self) -> bool:
+        """Return true of there is a Composite.h5 file (created by ANTs) on the save path"""
+        return os.path.exists(f'{self.save_path}/Composite.h5')
 
     def get_ants_init_transform(self) -> Union[List[ants.ANTsTransform], None]:
 
@@ -103,7 +100,7 @@ class Registration(QtCore.QObject):
 
         return [tr_ants, tr_trans_ants, tr_rot_ants]
 
-    def init_alignment_stack(self) -> np.ndarray:
+    def get_alignment_rgb_stack(self) -> np.ndarray:
 
         # Get Image data
         fixed_stack_ants = ants.from_numpy(self.fixed.data, spacing=(*self.fixed.resolution,))
@@ -121,7 +118,6 @@ class Registration(QtCore.QObject):
         raw_aligned_image = tr_ants.apply_to_image(moving_stack_ants, fixed_stack_ants)
 
         # Create image
-        # TODO: use respective colors
         image_data = np.concatenate(
             (fixed_stack_ants.numpy()[:, :, :, np.newaxis],
              raw_aligned_image.numpy()[:, :, :, np.newaxis],
@@ -131,26 +127,33 @@ class Registration(QtCore.QObject):
 
         return image_data
 
-    def registered_stack(self) -> np.ndarray:
+    def get_registered_rgb_stack(self) -> np.ndarray:
 
         # Apply transform
         fixed_stack_ants = ants.from_numpy(self.fixed.data, spacing=(*self.fixed.resolution,))
         moving_stack_ants = ants.from_numpy(self.moving.data, spacing=(*self.moving.resolution,))
-        warped_stack_ants = ants.apply_transforms(fixed_stack_ants, moving_stack_ants, [f'{self.get_save_path()}/Composite.h5'])
+        warped_stack_ants = ants.apply_transforms(fixed_stack_ants, moving_stack_ants, [f'{self.save_path}/Composite.h5'])
+
+        fixed_stack = fixed_stack_ants.numpy().astype(float)
+        # fixed_stack = (fixed_stack - fixed_stack.min()) / (fixed_stack.max() - fixed_stack.min())
+
+        warped_stack = warped_stack_ants.numpy().astype(float)
+        # warped_stack = (warped_stack - warped_stack.min()) / (warped_stack.max() - warped_stack.min())
 
         image_data = np.concatenate(
-            (fixed_stack_ants.numpy()[:, :, :, np.newaxis],
-             np.zeros(fixed_stack_ants.shape)[:, :, :, np.newaxis],
-             warped_stack_ants.numpy()[:, :, :, np.newaxis]),
+            (fixed_stack[:, :, :, np.newaxis],
+             warped_stack[:, :, :, np.newaxis],
+             np.zeros(fixed_stack.shape)[:, :, :, np.newaxis]),
             axis=3
         )
 
         return image_data
 
-    def run(self, settings: Dict[str, Any]):
+    def run(self):
 
-        save_path = self.get_save_path()
-        os.makedirs(save_path, exist_ok=True)
+        settings = self.settings.copy()
+
+        print('Run registration')
 
         # Get Image data
         fixed_stack_ants = ants.from_numpy(self.fixed.data, spacing=(*self.fixed.resolution,))
@@ -162,9 +165,9 @@ class Registration(QtCore.QObject):
         if transforms is None:
             init_transforms = None
         else:
-            trans_path = f'{save_path}/init_rot.mat'
+            trans_path = f'{self.save_path}/init_rot.mat'
             ants.write_transform(transforms[1], trans_path)
-            rot_path = f'{save_path}/init_trans.mat'
+            rot_path = f'{self.save_path}/init_trans.mat'
             ants.write_transform(transforms[2], rot_path)
 
             init_transforms = [trans_path, rot_path]
@@ -173,7 +176,7 @@ class Registration(QtCore.QObject):
         settings['initial_transform'] = init_transforms
         settings['verbose'] = True
         settings['write_composite_transform'] = True
-        settings['outprefix'] = f'{save_path}/'
+        settings['outprefix'] = f'{self.save_path}/'
         # Make sure that these are tuples
         #  ANTs does not like lists for these and yaml doesn't do tuples by default
         settings['reg_iterations'] = tuple(settings['reg_iterations'])
@@ -188,14 +191,17 @@ class Registration(QtCore.QObject):
                 'init_z_rotation': float(self.moving.z_rotation),
                 'registration_settings': settings}
 
-        yaml.safe_dump(meta, open(f'{save_path}/metadata.yaml', 'w'))
+        yaml.safe_dump(meta, open(f'{self.save_path}/metadata.yaml', 'w'))
 
         # Run registration
         proc = multiprocessing.Process(target=run_ants_registration,
-                                       args=(save_path, fixed_stack_ants, moving_stack_ants),
+                                       name=f'ANTS registration run',
+                                       args=(self.save_path, fixed_stack_ants, moving_stack_ants),
                                        kwargs=settings)
         proc.start()
         proc.join()
+
+        self.changed.emit()
 
 
 def run_ants_registration(save_path: str, *args, **kwargs):
@@ -232,3 +238,28 @@ class ANTsLog(object):
         self.log_file.close()
         # reset __stdout__
         os.dup2(self.saved_stdout, self.original_stdout)
+
+
+# Default settings
+default_reg_settings = dict(
+        type_of_transform="Affine",
+        grad_step=0.2,
+        flow_sigma=3,
+        total_sigma=0,
+        aff_metric="mattes",
+        aff_sampling=32,
+        aff_random_sampling_rate=0.2,
+        syn_metric="mattes",
+        syn_sampling=32,
+        reg_iterations=(40, 20, 0),
+        aff_iterations=(2100, 1200, 1200, 1200),
+        aff_shrink_factors=(6, 4, 2, 1),
+        aff_smoothing_sigmas=(3, 2, 1, 0),
+        random_seed=None,
+        multivariate_extras=None,
+        restrict_transformation=None,
+        smoothing_in_mm=False,
+)
+
+# Instantiate
+registration = Registration()

@@ -22,16 +22,36 @@ class Stack(QtCore.QObject):
     def __init__(self):
         QtCore.QObject.__init__(self)
 
-        self.data = None
+        self.data = np.zeros((1, 1, 1))
         self.resolution = np.array([1., 1., 1.])
-        self.translation = np.array([0., 0., 0.])
-        self.z_rotation: float = 0.
+        self._translation = np.array([0., 0., 0.])
+        self._z_rotation: float = 0.
         self.file_path: Union[Path, None] = None
         self.metadata: Dict[str, Any] = {}
 
     @property
     def shape(self) -> np.ndarray:
         return np.array(self.data.shape)
+
+    @property
+    def translation(self) -> np.ndarray:
+        return self._translation.copy()
+
+    @translation.setter
+    def translation(self, value: Union[list, tuple, np.ndarray]):
+        self._translation[:] = value
+
+        self.translation_changed.emit()
+
+    @property
+    def z_rotation(self) -> float:
+        return self._z_rotation
+
+    @z_rotation.setter
+    def z_rotation(self, value: float):
+        self._z_rotation = value
+
+        self.rotation_changed.emit()
 
     def get_folder(self) -> Path:
         return Path('/'.join(self.file_path.as_posix().split('/')[:-1]))
@@ -56,8 +76,15 @@ class Stack(QtCore.QObject):
             self.resolution[i] = res[v]
             n += 1
 
-        if n > 0:
-            self.resolution_changed.emit()
+        if n == 0:
+            return
+
+        # Reset translation and rotation
+        self.translation = [0, 0, 0]
+        self.z_rotation = 0
+
+        # Emit
+        self.resolution_changed.emit()
 
     def _load_tif(self):
 
@@ -84,14 +111,19 @@ class Stack(QtCore.QObject):
         # Update resultion based on file info
         _dim_order = ['x', 'y', 'z']
         _res_strings = {'zstack/x_res': 'x', 'zstack/y_res': 'y', 'zstack/z_res': 'z'}
+        new_vals = {}
         for _src, _dest in _res_strings.items():
             v = self.metadata.get(_src)
 
             if v is None:
                 continue
 
+            new_vals[_dest] = v
+
             # Update resolution for dimension
-            self.resolution[_dim_order.index(_dest)] = v
+            # self.resolution[_dim_order.index(_dest)] = v
+
+        self.set_resolution(new_vals)
 
     def _load_suite2p(self):
 

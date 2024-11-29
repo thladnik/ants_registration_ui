@@ -144,3 +144,23 @@ class StackResolution(QWidget):
             self.y_edit.editingFinished.emit()
             self.z_edit.setText(str(value))
             self.z_edit.editingFinished.emit()
+
+
+class DynamicWidget(QWidget):
+
+    visibility_changed = QtCore.Signal(bool)
+
+    def __init__(self):
+        QWidget.__init__(self)
+
+    def show(self):
+        if not self.isVisible():
+            self.visibility_changed.emit(True)
+
+        QWidget.show(self)
+
+    def hide(self):
+        if self.isVisible():
+            self.visibility_changed.emit(False)
+
+        QWidget.hide(self)
