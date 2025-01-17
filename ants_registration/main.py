@@ -228,10 +228,6 @@ def main():
     window = Window()
     window.show()
 
-    # window.fixed_stack.path_changed.emit(
-    #     'Z:/cluster/scripts/ants_registration/ants_registration/reference_data/2024-11-12_jf7_standard_stack/2024-11-12_jf7_5dpf_1p0magn_35laser_600gain_6avg_reference_tectum_top_140_to_0mu_0p88_zstep.tif')
-    # window.moving_stack.path_changed.emit(
-    #     'Z:/cluster/scripts/ants_registration/ants_registration/reference_data/2024-11-12_jf7_standard_stack/2024-11-12_jf7_5dpf_right_hemi_1p4magn_35laser_600gain_6avg_reference_tectum_top_140_to_0mu_0p63_zstep.tif')
     sys.exit(app.exec())
 
 

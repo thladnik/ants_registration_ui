@@ -92,10 +92,8 @@ class AlignVolumeGLWidget(gl.GLViewWidget):
         # Add volumes
         # Init fixed volume
         self.fixed_vol = None
-        # self.addItem(self.fixed_vol)
         # Init moving volume
         self.moving_vol = None  # gl.GLVolumeItem(self.data_moving)
-        # self.addItem(self.moving_vol)
 
         # Add grid
         self.grid = gl.GLGridItem()
