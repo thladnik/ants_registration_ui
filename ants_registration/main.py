@@ -62,7 +62,7 @@ class Window(QMainWindow):
         info_layout.setSpacing(0)
         info_layout.setContentsMargins(0, 0, 0, 0)
         self.info_panel.setLayout(info_layout)
-        self.info_panel.setMinimumSize(-1, 200)
+        self.info_panel.setMinimumSize(1, 200)
         self.info_panel.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
         self.right_layout.addWidget(self.info_panel)
 
@@ -209,7 +209,7 @@ class ControlPanel(QGroupBox):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
-        self.setMinimumSize(300, -1)
+        self.setMinimumSize(300, 1)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.MinimumExpanding)
 
         # Placeholder Buttons
