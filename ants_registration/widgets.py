@@ -22,8 +22,12 @@ class AlignVolumeWidget(DynamicWidget):
     def __init__(self):
         DynamicWidget.__init__(self)
 
-        main_layout = QVBoxLayout()
+        main_layout = QGridLayout()
         self.setLayout(main_layout)
+
+        # Add alignment widget
+        self.gl_widget = AlignVolumeGLWidget()
+        main_layout.addWidget(self.gl_widget, 0, 0, 2, 2)
 
         # Add controls info
         self.controls_label = QLabel("""
@@ -32,12 +36,13 @@ class AlignVolumeWidget(DynamicWidget):
         W/A -> front/back\n
         A/D -> left/right\n
         X/C -> up/down\n
+        Q/E -> rotate left/right\n
         N/M -> lower/higher contrast
         """)
-        main_layout.addWidget(self.controls_label)
-
-        self.gl_widget = AlignVolumeGLWidget()
-        main_layout.addWidget(self.gl_widget)
+        self.controls_label.setStyleSheet('border: 2px solid gray;')
+        main_layout.addWidget(self.controls_label, 0, 0)
+        main_layout.setRowStretch(1, 1)
+        main_layout.setColumnStretch(1, 1)
 
         # Connect signals
         registration.fixed.changed.connect(self.gl_widget.update_fixed_stack)
@@ -616,7 +621,7 @@ class MapPointsWidget(DynamicWidget):
 
         # Separate file paths into base directory and filename
         path_list = []
-        for widget in [self.moving_stack, self.fixed_stack, *[w for w in self.additional_references if w is not None]]:
+        for widget in [self.moving_stack, self.fixed_stack] + [w for w in self.additional_references if w is not None]:
             path = widget.file_path.text()
 
             parts = path.split('/')
@@ -629,7 +634,8 @@ class MapPointsWidget(DynamicWidget):
         for mov, ref in zip(path_list[:-1], path_list[1:]):
             p = f'{mov[0]}/ants_registration/{mov[1]}/{ref[1]}'
             registration_list.append(p)
-        transform_list = [f'{p}/Composite.h5' for p in registration_list]
+        # transform_list = [f'{p}/Composite.h5' for p in registration_list]
+        transform_list = [f'{p}/InverseComposite.h5' for p in registration_list]
 
         print('Transforms to apply:')
         print('\n'.join(transform_list))
@@ -639,12 +645,8 @@ class MapPointsWidget(DynamicWidget):
         stats = np.load(f'{path_list[0][0]}/suite2p/plane0/stat.npy', allow_pickle=True)
 
         # Build coordinates on source reference frame
-        roi_coords = np.array([[s['med'][0], s['med'][1], 6] for s in stats]) * np.array(src_resolution) #  + np.array(mov_slice.origin)
+        roi_coords = np.array([[s['med'][0], s['med'][1], 6] for s in stats]) * np.array(src_resolution)
         roi_coords_df = pd.DataFrame(roi_coords, columns=['y', 'x', 'z'])
-        # coords_1 = ants.apply_transforms_to_points(3, roi_coords_df, reg_slice_to_local['fwdtransforms'][::-1])
-        # coords_2 = ants.apply_transforms_to_points(3, coords_1, reg_local_to_standard['fwdtransforms'][::-1])
-        # roi_coords_transformed_df = ants.apply_transforms_to_points(3, coords_2,
-        #                                                             reg_standard_to_ref['fwdtransforms'][::-1])
 
         # Apply transforms
         print('Apply transforms')
@@ -658,7 +660,6 @@ class MapPointsWidget(DynamicWidget):
 
         # Get array
         # roi_coords_transformed = roi_coords_transformed_df[['x', 'y', 'z']].values
-
 
 
 class StackSelectionWidget(QGroupBox):

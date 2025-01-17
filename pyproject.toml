@@ -25,8 +25,9 @@ classifiers = [
 ]
 keywords = ['neuroscience', 'anatomical registration', 'experiment']
 dependencies = [
-    'PySide6>=6.8.0.2',
+    'antspyx>=0.5.4',
     'numpy>=2.0.1',
+    'PySide6>=6.8.0.2',
     'pyqtgraph>=0.13.7',
     'PyOpenGL>=3.1.7',
     'PyYAML>=6.0.2',
