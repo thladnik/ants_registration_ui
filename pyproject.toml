@@ -47,4 +47,4 @@ dev = ['pip-tools', 'pytest', 'build', 'twine']
 Homepage = 'https://github.com/thladnik/ants_registration_ui'
 
 [project.scripts]
-antsui = 'ants_registration.__main__:main'
+antsui = 'ants_registration.main:main'
