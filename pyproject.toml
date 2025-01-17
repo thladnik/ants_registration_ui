@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "antsui"
-version = "0.1.6"
+version = "0.1.0"
 description = "ANTs registration UI - graphical interface to the Advanced Normalization Toolbox"
 readme = "README.md"
 authors = [{ name = 'Tim Hladnik', email = "contact@vxpy.org" }]
@@ -23,7 +23,7 @@ classifiers = [
         'Programming Language :: Python :: 3.11',
         'Topic :: Scientific/Engineering'
 ]
-keywords = ['neuroscience', 'anatomical registration', 'experiment']
+keywords = ['anatomy', 'imaging', 'neuroscience', 'anatomical registration', 'experiment']
 dependencies = [
     'antspyx>=0.5.4',
     'numpy>=2.0.1',
@@ -47,4 +47,4 @@ dev = ['pip-tools', 'pytest', 'build', 'twine']
 Homepage = 'https://github.com/thladnik/ants_registration_ui'
 
 [project.scripts]
-vxpy = 'ants_registration.__main__:main'
+antsui = 'ants_registration.__main__:main'

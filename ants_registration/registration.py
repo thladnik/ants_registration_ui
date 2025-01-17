@@ -14,7 +14,7 @@ import numpy as np
 import yaml
 from PySide6 import QtCore
 
-from stack import Stack
+from ants_registration.stack import Stack
 
 
 class Registration(QtCore.QObject):
