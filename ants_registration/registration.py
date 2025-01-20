@@ -149,6 +149,73 @@ class Registration(QtCore.QObject):
 
         return image_data
 
+    def run_s2p_alignment(self):
+        """Estimate rough z-alignment of suite2p's mean image to the fixed stack, using phase correlation
+        """
+
+        print('Run s2p alignment')
+
+        def phase_correlations(ref: np.ndarray, im: np.ndarray) -> np.ndarray:
+            """Phase correlation calculation
+            after: https://github.com/michaelting/Phase_Correlation/blob/master/phase_corr.py
+
+            Parameters
+            ----------
+            ref : array
+                Array of shape (N, M)
+            im : array
+                Array of shape (N, M)
+
+            Returns
+            -------
+            array
+                Array of same size as ref, containing the phase correlations for the
+                corresponding index shift.
+            """
+
+            conj = np.ma.conjugate(np.fft.fft2(im))
+            r = np.fft.fft2(ref) * conj
+            r /= np.absolute(r)
+            return np.fft.ifft2(r).real
+
+        zstack = self.fixed.data
+        moving_im = self.moving.s2p_mean_image
+
+        # Determine padding and make sure it is divisible by 2
+        padding = moving_im.shape[0] / 4
+        padding = int(padding // 2 * 2)
+
+        # Pad reference on all sides
+        moving_im_pad = np.pad(moving_im, (padding // 2, padding // 2))
+
+        corrs = []
+        xy = []
+        for i in range(zstack.shape[2]):
+            ref_image = np.pad(zstack[:, :, i], (0, padding))
+
+            corrimg = phase_correlations(ref_image, moving_im_pad)
+
+            maxcorr = corrimg.max()
+            y, x = np.unravel_index(corrimg.argmax(), corrimg.shape)
+
+            x -= padding // 2
+            y -= padding // 2
+
+            corrs.append(maxcorr)
+            xy.append([x, y])
+
+        # Set translation based on best phase correlation
+        best_corr_idx = np.argmax(corrs)
+        xshift = (512 - xy[best_corr_idx][0]) * self.fixed.resolution[0]
+        yshift = (512 - xy[best_corr_idx][1]) * self.fixed.resolution[1]
+        zshift = self.fixed.resolution[2] * best_corr_idx
+
+        print(*xy[best_corr_idx], best_corr_idx)
+        print(xshift, yshift, zshift)
+        print(self.fixed.resolution)
+
+        self.moving.translation = (xshift, yshift, zshift)
+
     def run(self):
 
         settings = self.settings.copy()

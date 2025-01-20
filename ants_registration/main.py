@@ -103,6 +103,7 @@ class Window(QMainWindow):
         self.progress_bar.hide()
 
         self.file_menu = QMenu('&File', self)
+        self.menuBar().addMenu(self.file_menu)
 
         self.file_open_ref = self.file_menu.addAction('&Open reference stack...', self.fixed_stack.select_file)
         self.file_open_ref.setShortcut('Ctrl+r')
@@ -111,7 +112,12 @@ class Window(QMainWindow):
         self.file_open_s2p = self.file_menu.addAction('&Import suite2p layer as moving stack...',
                                                       self.moving_stack.select_suite2p_folder)
         self.file_open_s2p.setShortcut('Ctrl+p')
-        self.menuBar().addMenu(self.file_menu)
+
+        self.tool_menu = QMenu('&Tools')
+        self.menuBar().addMenu(self.tool_menu)
+
+        self.run_s2p_alignment = self.tool_menu.addAction('&Run s2p alignment', registration.run_s2p_alignment)
+        self.run_s2p_alignment.setShortcut('Ctrl+Shift+Z')
 
         # Add statusbar buttons
         self.dynamic_button_bar = QWidget()

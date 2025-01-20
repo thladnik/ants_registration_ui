@@ -29,6 +29,8 @@ class Stack(QtCore.QObject):
         self.file_path: Union[Path, None] = None
         self.metadata: Dict[str, Any] = {}
 
+        self.s2p_mean_image: np.ndarray = np.zeros((1, 1, 1))
+
     @property
     def shape(self) -> np.ndarray:
         return np.array(self.data.shape)
@@ -132,6 +134,7 @@ class Stack(QtCore.QObject):
         im_slice = ops['meanImg'].T
         im_slice[:10] = 0
         im_slice[-10:] = 0
+        self.s2p_mean_image = im_slice
 
         # Create fake volume
         im_slice_stack = np.zeros(im_slice.shape + (11,))
