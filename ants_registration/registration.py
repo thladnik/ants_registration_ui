@@ -178,8 +178,14 @@ class Registration(QtCore.QObject):
             r /= np.absolute(r)
             return np.fft.ifft2(r).real
 
+        # Get reference stack
         zstack = self.fixed.data
-        moving_im = self.moving.s2p_mean_image
+
+        # Get s2p mean image and resample to target dimensions
+        moving_im_ants = ants.from_numpy(self.moving.s2p_mean_image[:, :, None], spacing=(*self.moving.resolution,))
+        zstack_ants = ants.from_numpy(zstack, spacing=(*self.fixed.resolution,))
+        # moving_im = ants.resample_image(moving_im_ants, resample_params=(*self.fixed.resolution,)).numpy().squeeze()
+        moving_im = ants.resample_image_to_target(moving_im_ants, zstack_ants).numpy()[:, :, 0]
 
         # Determine padding and make sure it is divisible by 2
         padding = moving_im.shape[0] / 4
@@ -196,7 +202,7 @@ class Registration(QtCore.QObject):
             corrimg = phase_correlations(ref_image, moving_im_pad)
 
             maxcorr = corrimg.max()
-            y, x = np.unravel_index(corrimg.argmax(), corrimg.shape)
+            x, y = np.unravel_index(corrimg.argmax(), corrimg.shape)
 
             x -= padding // 2
             y -= padding // 2
@@ -205,14 +211,17 @@ class Registration(QtCore.QObject):
             xy.append([x, y])
 
         # Set translation based on best phase correlation
+        xdim, ydim = zstack.shape[:2]
         best_corr_idx = np.argmax(corrs)
-        xshift = (512 - xy[best_corr_idx][0]) * self.fixed.resolution[0]
-        yshift = (512 - xy[best_corr_idx][1]) * self.fixed.resolution[1]
+        xshift = (xdim - xy[best_corr_idx][0]) * self.fixed.resolution[0]
+        yshift = (ydim - xy[best_corr_idx][1]) * self.fixed.resolution[1]
         zshift = self.fixed.resolution[2] * best_corr_idx
 
-        print(*xy[best_corr_idx], best_corr_idx)
-        print(xshift, yshift, zshift)
-        print(self.fixed.resolution)
+        # print(*xy[best_corr_idx], best_corr_idx)
+        # print(xshift, yshift, zshift)
+        # print(self.fixed.resolution)
+
+        print(f'Finished alignment: {(xshift, yshift, zshift)}')
 
         self.moving.translation = (xshift, yshift, zshift)
 
