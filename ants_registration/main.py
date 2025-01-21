@@ -111,13 +111,13 @@ class Window(QMainWindow):
         self.file_open_moving.setShortcut('Ctrl+m')
         self.file_open_s2p = self.file_menu.addAction('&Import suite2p layer as moving stack...',
                                                       self.moving_stack.select_suite2p_folder)
-        self.file_open_s2p.setShortcut('Ctrl+p')
+        self.file_open_s2p.setShortcut('Ctrl+Shift+s')
 
         self.tool_menu = QMenu('&Tools')
         self.menuBar().addMenu(self.tool_menu)
 
-        self.run_s2p_alignment = self.tool_menu.addAction('&Run s2p alignment', registration.run_s2p_alignment)
-        self.run_s2p_alignment.setShortcut('Ctrl+Shift+Z')
+        self.run_s2p_alignment = self.tool_menu.addAction('&Run s2p alignment', widgets.S2PAlignment.run)
+        self.run_s2p_alignment.setShortcut('Ctrl+Shift+a')
 
         # Add statusbar buttons
         self.dynamic_button_bar = QWidget()

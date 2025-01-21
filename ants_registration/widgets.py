@@ -712,3 +712,37 @@ class Task(QtCore.QObject):
             traceback.print_exc()
 
         self.finished.emit()
+
+
+class S2PAlignment(QWidget):
+
+    current_widget: S2PAlignment = None
+
+    def __init__(self):
+        QWidget.__init__(self)
+        self.setMinimumSize(800, 200)
+        self.setWindowFlags(QtCore.Qt.WindowType.Window)
+        self.show()
+
+        self.setWindowTitle(f'suite2p pre-alignment')
+        self.setLayout(QHBoxLayout())
+
+        self.phase_corr_plot = pg.PlotWidget()
+        self.layout().addWidget(self.phase_corr_plot)
+
+    @classmethod
+    def run(cls):
+        corrs, xy = registration.run_s2p_alignment()
+
+        if cls.current_widget is not None:
+            cls.current_widget.close()
+
+        cls.current_widget = S2PAlignment()
+
+        plot_item: pg.PlotItem = cls.current_widget.phase_corr_plot.getPlotItem()
+
+        zloc = np.arange(registration.fixed.shape[2]) * registration.fixed.resolution[2]
+        plot_item.plot(zloc, corrs, units='my')
+        plot_item.setAxisItems()
+
+        cls.current_widget.raise_()

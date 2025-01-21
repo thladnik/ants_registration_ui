@@ -10,7 +10,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Union
 
 import ants
+import matplotlib.pyplot as plt
 import numpy as np
+import scipy
 import yaml
 from PySide6 import QtCore
 
@@ -201,8 +203,12 @@ class Registration(QtCore.QObject):
 
             corrimg = phase_correlations(ref_image, moving_im_pad)
 
-            maxcorr = corrimg.max()
-            x, y = np.unravel_index(corrimg.argmax(), corrimg.shape)
+            # Smoothen phase correlation image to make maximum-estimate more robust
+            corrimg_sm = scipy.ndimage.gaussian_filter(corrimg, sigma=3)
+
+            # Get maximum phase correlation and respective x/y shifts
+            maxcorr = corrimg_sm.max()
+            x, y = np.unravel_index(corrimg_sm.argmax(), corrimg_sm.shape)
 
             x -= padding // 2
             y -= padding // 2
@@ -217,13 +223,22 @@ class Registration(QtCore.QObject):
         yshift = (ydim - xy[best_corr_idx][1]) * self.fixed.resolution[1]
         zshift = self.fixed.resolution[2] * best_corr_idx
 
+        print(corrs)
+
         # print(*xy[best_corr_idx], best_corr_idx)
         # print(xshift, yshift, zshift)
         # print(self.fixed.resolution)
 
         print(f'Finished alignment: {(xshift, yshift, zshift)}')
 
+        # plt.figure(figsize=(10, 5))
+        # plt.title('Phase correlations per layer')
+        # plt.plot(corrs)
+        # plt.show()
+
         self.moving.translation = (xshift, yshift, zshift)
+
+        return corrs, xy
 
     def run(self):
 
