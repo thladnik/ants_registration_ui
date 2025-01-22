@@ -216,28 +216,6 @@ class Registration(QtCore.QObject):
             corrs.append(maxcorr)
             xy.append([x, y])
 
-        # Set translation based on best phase correlation
-        xdim, ydim = zstack.shape[:2]
-        best_corr_idx = np.argmax(corrs)
-        xshift = (xdim - xy[best_corr_idx][0]) * self.fixed.resolution[0]
-        yshift = (ydim - xy[best_corr_idx][1]) * self.fixed.resolution[1]
-        zshift = self.fixed.resolution[2] * best_corr_idx
-
-        print(corrs)
-
-        # print(*xy[best_corr_idx], best_corr_idx)
-        # print(xshift, yshift, zshift)
-        # print(self.fixed.resolution)
-
-        print(f'Finished alignment: {(xshift, yshift, zshift)}')
-
-        # plt.figure(figsize=(10, 5))
-        # plt.title('Phase correlations per layer')
-        # plt.plot(corrs)
-        # plt.show()
-
-        self.moving.translation = (xshift, yshift, zshift)
-
         return corrs, xy
 
     def run(self):

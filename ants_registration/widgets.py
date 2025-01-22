@@ -717,6 +717,9 @@ class Task(QtCore.QObject):
 class S2PAlignment(QWidget):
 
     current_widget: S2PAlignment = None
+    zcorrelations: np.ndarray = None
+    xy_shifts: np.ndarray = None
+    vline: pg.InfiniteLine = None
 
     def __init__(self):
         QWidget.__init__(self)
@@ -732,17 +735,50 @@ class S2PAlignment(QWidget):
 
     @classmethod
     def run(cls):
-        corrs, xy = registration.run_s2p_alignment()
 
         if cls.current_widget is not None:
             cls.current_widget.close()
 
         cls.current_widget = S2PAlignment()
 
+        cls.zcorrelations, cls.xy_shifts = registration.run_s2p_alignment()
+
         plot_item: pg.PlotItem = cls.current_widget.phase_corr_plot.getPlotItem()
 
-        zloc = np.arange(registration.fixed.shape[2]) * registration.fixed.resolution[2]
-        plot_item.plot(zloc, corrs, units='my')
+        # zloc = np.arange(registration.fixed.shape[2]) * registration.fixed.resolution[2]
+        plot_item.plot(cls.zcorrelations, units='my')
         plot_item.setAxisItems()
 
+        # # Set translation based on best phase correlation
+        # xdim, ydim = registration.fixed.shape[:2]
+        best_corr_idx = np.argmax(cls.zcorrelations)
+        # xshift = (xdim - cls.xy_shifts[best_corr_idx][0]) * registration.fixed.resolution[0]
+        # yshift = (ydim - cls.xy_shifts[best_corr_idx][1]) * registration.fixed.resolution[1]
+        # zshift = registration.fixed.resolution[2] * best_corr_idx
+        #
+        # print(f'Finished alignment: {(xshift, yshift, zshift)}')
+        #
+        # registration.moving.translation = (xshift, yshift, zshift)
+
+        cls.vline = pg.InfiniteLine(pos=0, movable=True)
+        cls.vline.sigPositionChanged.connect(cls.layer_line_changed)
+        plot_item.addItem(cls.vline)
+
+        cls.current_widget.activateWindow()
         cls.current_widget.raise_()
+
+        cls.vline.setPos(best_corr_idx)
+
+    @classmethod
+    def layer_line_changed(cls, line: pg.InfiniteLine):
+
+        # Set translation based on best phase correlation
+        xdim, ydim = registration.fixed.shape[:2]
+        selected_idx = int(line.pos().x())
+        xshift = (xdim - cls.xy_shifts[selected_idx][0]) * registration.fixed.resolution[0]
+        yshift = (ydim - cls.xy_shifts[selected_idx][1]) * registration.fixed.resolution[1]
+        zshift = registration.fixed.resolution[2] * selected_idx
+
+        print(f'Finished alignment: {(xshift, yshift, zshift)}')
+
+        registration.moving.translation = (xshift, yshift, zshift)
