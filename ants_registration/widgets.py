@@ -9,7 +9,7 @@ import pandas as pd
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 import yaml
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui
 from PySide6.QtWidgets import *
 from PySide6.QtCore import Qt
 
@@ -17,7 +17,46 @@ from ants_registration.ui import DynamicWidget
 from ants_registration.registration import registration
 
 
-class AlignVolumeWidget(DynamicWidget):
+translation_keys = [
+    Qt.Key.Key_C,
+    Qt.Key.Key_X,
+    Qt.Key.Key_W,
+    Qt.Key.Key_S,
+    Qt.Key.Key_A,
+    Qt.Key.Key_D
+]
+
+translation_axes = [
+    (0, 0, -1),  # up
+    (0, 0, 1),  # down
+    (0, -1, 0),  # front
+    (0, 1, 0),  # back
+    (1, 0, 0),  # left
+    (-1, 0, 0)  # right
+]
+
+rotation_keys = [
+    Qt.Key.Key_Q,
+    Qt.Key.Key_E
+]
+
+rotation_directions = [
+    -1,  # CCW
+    1  # CW
+]
+
+
+def apply_translation(ev):
+    _axis = translation_axes[translation_keys.index(ev.key())]
+    registration.moving.translation = registration.moving.translation + np.array(_axis) * 1
+
+
+def apply_rotation(ev):
+    _dir = rotation_directions[rotation_keys.index(ev.key())]
+    registration.moving.z_rotation = registration.moving.z_rotation + _dir * 1
+
+
+class Align3DWidget(DynamicWidget):
 
     def __init__(self):
         DynamicWidget.__init__(self)
@@ -26,7 +65,7 @@ class AlignVolumeWidget(DynamicWidget):
         self.setLayout(main_layout)
 
         # Add alignment widget
-        self.gl_widget = AlignVolumeGLWidget()
+        self.gl_widget = Align3DGLWidget()
         main_layout.addWidget(self.gl_widget, 0, 0, 2, 2)
 
         # Add controls info
@@ -54,34 +93,7 @@ class AlignVolumeWidget(DynamicWidget):
         registration.moving.rotation_changed.connect(self.gl_widget.update_transform)
 
 
-class AlignVolumeGLWidget(gl.GLViewWidget):
-    translation_keys = [
-        Qt.Key.Key_C,
-        Qt.Key.Key_X,
-        Qt.Key.Key_W,
-        Qt.Key.Key_S,
-        Qt.Key.Key_A,
-        Qt.Key.Key_D
-    ]
-
-    translation_axes = [
-        (0, 0, -1),  # up
-        (0, 0, 1),  # down
-        (0, -1, 0),  # front
-        (0, 1, 0),  # back
-        (1, 0, 0),  # left
-        (-1, 0, 0)  # right
-    ]
-
-    rotation_keys = [
-        Qt.Key.Key_Q,
-        Qt.Key.Key_E
-    ]
-
-    rotation_directions = [
-        -1,  # CCW
-        1  # CW
-    ]
+class Align3DGLWidget(gl.GLViewWidget):
 
     def __init__(self, *args, **kwargs):
         gl.GLViewWidget.__init__(self, *args, **kwargs)
@@ -172,11 +184,11 @@ class AlignVolumeGLWidget(gl.GLViewWidget):
 
     def keyPressEvent(self, ev):
 
-        if ev.key() in self.translation_keys:
-            self.apply_translation(ev)
+        if ev.key() in translation_keys:
+            apply_translation(ev)
 
-        if ev.key() in self.rotation_keys:
-            self.apply_rotation(ev)
+        if ev.key() in rotation_keys:
+            apply_rotation(ev)
 
         if ev.key() in [Qt.Key.Key_N, Qt.Key.Key_M]:
             print('Contrast')
@@ -192,18 +204,6 @@ class AlignVolumeGLWidget(gl.GLViewWidget):
 
         gl.GLViewWidget.keyPressEvent(self, ev)
 
-    def apply_translation(self, ev):
-        _axis = self.translation_axes[self.translation_keys.index(ev.key())]
-
-        registration.moving.translation = registration.moving.translation + np.array(_axis) * 1
-
-        # print('Translation:', registration.moving.translation)
-
-    def apply_rotation(self, ev):
-        _dir = self.rotation_directions[self.rotation_keys.index(ev.key())]
-
-        registration.moving.z_rotation = registration.moving.z_rotation + _dir * 1
-
     def update_transform(self):
 
         # Set transforms for volumes
@@ -211,6 +211,98 @@ class AlignVolumeGLWidget(gl.GLViewWidget):
             self.fixed_vol.setTransform(registration.fixed.get_pg_transform())
         if self.moving_vol is not None:
             self.moving_vol.setTransform(registration.moving.get_pg_transform())
+
+
+class Align2DWidget(DynamicWidget):
+
+    def __init__(self):
+        DynamicWidget.__init__(self)
+
+        main_layout = QVBoxLayout()
+        self.setLayout(main_layout)
+
+        # Add moving
+        self.imv_mov = pg.ImageView(discreteTimeLine=True)
+        main_layout.addWidget(self.imv_mov)
+
+        # Add fixed
+        self.imv_fixed = pg.ImageView(discreteTimeLine=True)
+        main_layout.addWidget(self.imv_fixed)
+
+        # Alter UI
+        self.imv_fixed.hide()
+
+        self.imv_mov.ui.roiBtn.hide()
+        self.imv_mov.ui.menuBtn.hide()
+        self.imv_mov.ui.gridLayout.addWidget(self.imv_fixed.ui.histogram, 0, 3, 1, 2)
+        self.imv_fixed.getHistogramWidget().item.gradient.setColorMap(pg.colormap.get('CET-L13'))
+        self.imv_fixed.getHistogramWidget().item.gradient.showTicks(False)
+        self.imv_mov.getHistogramWidget().item.gradient.setColorMap(pg.colormap.get('CET-L14'))
+        self.imv_mov.getHistogramWidget().item.gradient.showTicks(False)
+        self.imv_fixed.imageItem.setCompositionMode(QtGui.QPainter.CompositionMode.CompositionMode_Plus)
+        self.imv_mov.view.addItem(self.imv_fixed.imageItem)
+        self.imv_fixed.imageItem.setPos(450, 20)
+        self.imv_fixed.setFixedSize(50, 50)
+
+        # Connect signals
+
+        registration.fixed.changed.connect(self.update_fixed_stack)
+        registration.fixed.resolution_changed.connect(self.update_transform)
+
+        registration.moving.changed.connect(self.update_moving_stack)
+        registration.moving.resolution_changed.connect(self.update_transform)
+        registration.moving.translation_changed.connect(self.update_transform)
+        registration.moving.rotation_changed.connect(self.update_transform)
+
+        self.imv_fixed.sigTimeChanged.connect(self.autoscale_fixed_contrast)
+
+    def update_fixed_stack(self):
+
+        self.imv_fixed.setImage(registration.fixed.data, axes={'x': 0, 'y': 1, 't': 2})
+
+    def update_moving_stack(self):
+
+        self.imv_mov.setImage(registration.moving.data, axes={'x': 0, 'y': 1, 't': 2})
+        self.imv_mov.setCurrentIndex(registration.moving.shape[2] // 2)
+
+    def update_transform(self):
+
+        self.imv_fixed.imageItem.setScale(registration.fixed.resolution[0] / registration.moving.resolution[0])
+
+        # TODO: scale only allows for aspect=1 in x and y
+        #  this could be improved by instead using pg.ImageItem.setRect,
+        #   however, the ImageItems bounding rect is not rotated when using pg.ImageItem.setRotation.
+        #  This causes skew on z-rotated stacks. Possible solution: calculate bounding rect position and size manually
+        #   from z-rotation and aspect ratio to fix skew.
+
+        self.imv_fixed.imageItem.setRotation(registration.moving.z_rotation)
+
+        # Set zlayer
+        layer_idx = int(registration.moving.translation[2] // registration.fixed.resolution[2])
+
+        if not 0 <= layer_idx < registration.fixed.shape[2]:
+            return
+
+        print(f'Set to layer {layer_idx}')
+        self.imv_fixed.setCurrentIndex(layer_idx)
+        # Set x/y position
+        xy = registration.moving.translation[:2]
+        self.imv_fixed.imageItem.setPos(xy[0], -xy[1])
+
+    def keyPressEvent(self, ev):
+
+        if ev.key() in translation_keys:
+            apply_translation(ev)
+
+        if ev.key() in rotation_keys:
+            apply_rotation(ev)
+
+        QWidget.keyPressEvent(self, ev)
+
+    def autoscale_fixed_contrast(self):
+        pass
+        # im = registration.fixed.data[:,:,self.imv_fixed.currentIndex]
+        # self.imv_fixed.getHistogramWidget().item.setLevels(im.min(), np.percentile(im.flatten(), 75))
 
 
 class ShowAlignment2DWidget(DynamicWidget):
@@ -723,7 +815,7 @@ class S2PAlignment(QWidget):
 
     def __init__(self):
         QWidget.__init__(self)
-        self.setMinimumSize(800, 200)
+        self.setMinimumSize(800, 150)
         self.setWindowFlags(QtCore.Qt.WindowType.Window)
         self.show()
 
@@ -745,20 +837,11 @@ class S2PAlignment(QWidget):
 
         plot_item: pg.PlotItem = cls.current_widget.phase_corr_plot.getPlotItem()
 
-        # zloc = np.arange(registration.fixed.shape[2]) * registration.fixed.resolution[2]
         plot_item.plot(cls.zcorrelations, units='my')
         plot_item.setAxisItems()
 
-        # # Set translation based on best phase correlation
-        # xdim, ydim = registration.fixed.shape[:2]
+        # Set translation based on best phase correlation
         best_corr_idx = np.argmax(cls.zcorrelations)
-        # xshift = (xdim - cls.xy_shifts[best_corr_idx][0]) * registration.fixed.resolution[0]
-        # yshift = (ydim - cls.xy_shifts[best_corr_idx][1]) * registration.fixed.resolution[1]
-        # zshift = registration.fixed.resolution[2] * best_corr_idx
-        #
-        # print(f'Finished alignment: {(xshift, yshift, zshift)}')
-        #
-        # registration.moving.translation = (xshift, yshift, zshift)
 
         cls.vline = pg.InfiniteLine(pos=0, movable=True)
         cls.vline.sigPositionChanged.connect(cls.layer_line_changed)

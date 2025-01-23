@@ -76,7 +76,9 @@ class Window(QMainWindow):
 
         # Create dynamic widgets
         # 3D volume widget for rough alignment
-        self.align_3d_widget = widgets.AlignVolumeWidget()
+        self.align_3d_widget = widgets.Align3DWidget()
+        # 2D widget for rough alignment
+        self.align_2d_widget = widgets.Align2DWidget()
         # 2D widget to verify rough alignment
         self.show_alignment_2d_widget = widgets.ShowAlignment2DWidget()
         # Registration widget to configure ANTs parameters
@@ -124,6 +126,7 @@ class Window(QMainWindow):
         self.dynamic_button_bar.setLayout(QHBoxLayout())
         self.statusBar().addPermanentWidget(self.dynamic_button_bar)
         self.add_dynamic_widget('Align 3D', self.align_3d_widget, selected=True)
+        self.add_dynamic_widget('Align 2D', self.align_2d_widget)
         self.add_dynamic_widget('Show 2D alignment', self.show_alignment_2d_widget)
         self.add_dynamic_widget('Configure registration', self.registration_widget)
         self.add_dynamic_widget('Show 2D registration', self.show_reg_2d_widget)

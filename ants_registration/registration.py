@@ -78,15 +78,8 @@ class Registration(QtCore.QObject):
         moving_shape = self.moving.shape
         fixed_shape = self.fixed.shape
 
-        # Create rotation
-        c_rot = np.array([moving_shape[0] / 2, moving_shape[1] / 2, 0.])
-        R = np.array([[np.cos(_rot), -np.sin(_rot), 0, 0],
-                      [np.sin(_rot), np.cos(_rot), 0, 0],
-                      [0, 0, 1, 0]])
-
-        tr_rot_ants = ants.create_ants_transform(transform_type='AffineTransform')
-        tr_rot_ants.set_parameters(R)
-        tr_rot_ants.set_fixed_parameters(c_rot * moving_scale)
+        # Get rotation transform
+        tr_rot_ants = self.get_ants_rotation_transform()
 
         # Create translation transform
         x_offset = (fixed_scale[0] * fixed_shape[0] - moving_scale[0] * moving_shape[0])
@@ -101,6 +94,25 @@ class Registration(QtCore.QObject):
         tr_ants = ants.compose_ants_transforms([tr_trans_ants, tr_rot_ants])
 
         return [tr_ants, tr_trans_ants, tr_rot_ants]
+
+    def get_ants_rotation_transform(self):
+
+        _rot = -np.deg2rad(self.moving.z_rotation)
+
+        moving_scale = self.moving.resolution
+        moving_shape = self.moving.shape
+
+        # Create rotation
+        c_rot = np.array([moving_shape[0] / 2, moving_shape[1] / 2, 0.])
+        R = np.array([[np.cos(_rot), -np.sin(_rot), 0, 0],
+                      [np.sin(_rot), np.cos(_rot), 0, 0],
+                      [0, 0, 1, 0]])
+
+        tr_rot_ants = ants.create_ants_transform(transform_type='AffineTransform')
+        tr_rot_ants.set_parameters(R)
+        tr_rot_ants.set_fixed_parameters(c_rot * moving_scale)
+
+        return tr_rot_ants
 
     def get_alignment_rgb_stack(self) -> np.ndarray:
 
@@ -186,7 +198,10 @@ class Registration(QtCore.QObject):
         # Get s2p mean image and resample to target dimensions
         moving_im_ants = ants.from_numpy(self.moving.s2p_mean_image[:, :, None], spacing=(*self.moving.resolution,))
         zstack_ants = ants.from_numpy(zstack, spacing=(*self.fixed.resolution,))
-        # moving_im = ants.resample_image(moving_im_ants, resample_params=(*self.fixed.resolution,)).numpy().squeeze()
+        # Get and apply rotation
+        # _rot_transform = self.get_ants_rotation_transform()
+        # moving_im_ants = _rot_transform.apply_to_image(moving_im_ants, zstack_ants)
+        # moving_im = moving_im_ants.numpy()[:, :, 0]
         moving_im = ants.resample_image_to_target(moving_im_ants, zstack_ants).numpy()[:, :, 0]
 
         # Determine padding and make sure it is divisible by 2
