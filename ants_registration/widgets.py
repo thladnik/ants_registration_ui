@@ -254,7 +254,10 @@ class Align2DWidget(DynamicWidget):
         registration.moving.translation_changed.connect(self.update_transform)
         registration.moving.rotation_changed.connect(self.update_transform)
 
-        self.imv_fixed.sigTimeChanged.connect(self.autoscale_fixed_contrast)
+        self.imv_mov.sigTimeChanged.connect(self.update_transform)
+
+    def get_current_moving_image(self):
+        return registration.moving.data[:, :, self.imv_mov.currentIndex]
 
     def update_fixed_stack(self):
 
@@ -267,7 +270,8 @@ class Align2DWidget(DynamicWidget):
 
     def update_transform(self):
 
-        self.imv_fixed.imageItem.setScale(registration.fixed.resolution[0] / registration.moving.resolution[0])
+        scale = registration.fixed.resolution[0] / registration.moving.resolution[0]
+        self.imv_fixed.imageItem.setScale(scale)
 
         # TODO: scale only allows for aspect=1 in x and y
         #  this could be improved by instead using pg.ImageItem.setRect,
@@ -278,16 +282,24 @@ class Align2DWidget(DynamicWidget):
         self.imv_fixed.imageItem.setRotation(registration.moving.z_rotation)
 
         # Set zlayer
-        layer_idx = int(registration.moving.translation[2] // registration.fixed.resolution[2])
+        layer_idx = int(registration.moving.translation[2] / registration.fixed.resolution[2])
+        layer_idx += int(self.imv_mov.currentIndex * registration.moving.resolution[2] / registration.fixed.resolution[2])
 
         if not 0 <= layer_idx < registration.fixed.shape[2]:
             return
 
         print(f'Set to layer {layer_idx}')
         self.imv_fixed.setCurrentIndex(layer_idx)
+
         # Set x/y position
-        xy = registration.moving.translation[:2]
-        self.imv_fixed.imageItem.setPos(xy[0], -xy[1])
+        xy = registration.moving.translation[:2] / registration.moving.resolution[:2]
+        xoffset = (registration.moving.shape[0] * registration.moving.resolution[0] - registration.fixed.shape[0] * registration.fixed.resolution[0]) / registration.moving.resolution[0]
+        x = xoffset + xy[0]
+        y = xy[1]
+
+        # print('xoffset', xoffset)
+        # print('xshift', xy[0])
+        self.imv_fixed.imageItem.setPos(x, -y)
 
     def keyPressEvent(self, ev):
 
@@ -299,10 +311,6 @@ class Align2DWidget(DynamicWidget):
 
         QWidget.keyPressEvent(self, ev)
 
-    def autoscale_fixed_contrast(self):
-        pass
-        # im = registration.fixed.data[:,:,self.imv_fixed.currentIndex]
-        # self.imv_fixed.getHistogramWidget().item.setLevels(im.min(), np.percentile(im.flatten(), 75))
 
 
 class ShowAlignment2DWidget(DynamicWidget):
@@ -806,9 +814,8 @@ class Task(QtCore.QObject):
         self.finished.emit()
 
 
-class S2PAlignment(QWidget):
+class PreAlignmentWidget(QWidget):
 
-    current_widget: S2PAlignment = None
     zcorrelations: np.ndarray = None
     xy_shifts: np.ndarray = None
     vline: pg.InfiniteLine = None
@@ -825,41 +832,35 @@ class S2PAlignment(QWidget):
         self.phase_corr_plot = pg.PlotWidget()
         self.layout().addWidget(self.phase_corr_plot)
 
-    @classmethod
-    def run(cls):
+    def plot(self, zcorrelations, xyshifts):
 
-        if cls.current_widget is not None:
-            cls.current_widget.close()
+        self.zcorrelations = zcorrelations
+        self.xy_shifts = xyshifts
 
-        cls.current_widget = S2PAlignment()
+        plot_item: pg.PlotItem = self.phase_corr_plot.getPlotItem()
 
-        cls.zcorrelations, cls.xy_shifts = registration.run_s2p_alignment()
-
-        plot_item: pg.PlotItem = cls.current_widget.phase_corr_plot.getPlotItem()
-
-        plot_item.plot(cls.zcorrelations, units='my')
+        plot_item.plot(self.zcorrelations, units='my')
         plot_item.setAxisItems()
 
         # Set translation based on best phase correlation
-        best_corr_idx = np.argmax(cls.zcorrelations)
+        best_corr_idx = np.argmax(self.zcorrelations)
 
-        cls.vline = pg.InfiniteLine(pos=0, movable=True)
-        cls.vline.sigPositionChanged.connect(cls.layer_line_changed)
-        plot_item.addItem(cls.vline)
+        self.vline = pg.InfiniteLine(pos=0, movable=True)
+        self.vline.sigPositionChanged.connect(self.layer_line_changed)
+        plot_item.addItem(self.vline)
 
-        cls.current_widget.activateWindow()
-        cls.current_widget.raise_()
+        self.activateWindow()
+        self.raise_()
 
-        cls.vline.setPos(best_corr_idx)
+        self.vline.setPos(best_corr_idx)
 
-    @classmethod
-    def layer_line_changed(cls, line: pg.InfiniteLine):
+    def layer_line_changed(self, line: pg.InfiniteLine):
 
         # Set translation based on best phase correlation
         xdim, ydim = registration.fixed.shape[:2]
         selected_idx = int(line.pos().x())
-        xshift = (xdim - cls.xy_shifts[selected_idx][0]) * registration.fixed.resolution[0]
-        yshift = (ydim - cls.xy_shifts[selected_idx][1]) * registration.fixed.resolution[1]
+        xshift = (xdim - self.xy_shifts[selected_idx][0]) * registration.fixed.resolution[0]
+        yshift = (ydim - self.xy_shifts[selected_idx][1]) * registration.fixed.resolution[1]
         zshift = registration.fixed.resolution[2] * selected_idx
 
         print(f'Finished alignment: {(xshift, yshift, zshift)}')

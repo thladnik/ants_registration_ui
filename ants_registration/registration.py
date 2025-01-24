@@ -163,11 +163,11 @@ class Registration(QtCore.QObject):
 
         return image_data
 
-    def run_s2p_alignment(self):
+    def run_pre_alignment(self, moving_image: np.ndarray):
         """Estimate rough z-alignment of suite2p's mean image to the fixed stack, using phase correlation
         """
 
-        print('Run s2p alignment')
+        print('Run pre alignment')
 
         def phase_correlations(ref: np.ndarray, im: np.ndarray) -> np.ndarray:
             """Phase correlation calculation
@@ -196,7 +196,8 @@ class Registration(QtCore.QObject):
         zstack = self.fixed.data
 
         # Get s2p mean image and resample to target dimensions
-        moving_im_ants = ants.from_numpy(self.moving.s2p_mean_image[:, :, None], spacing=(*self.moving.resolution,))
+        # moving_im_ants = ants.from_numpy(self.moving.s2p_mean_image[:, :, None], spacing=(*self.moving.resolution,))
+        moving_im_ants = ants.from_numpy(moving_image[:, :, None], spacing=(*self.moving.resolution,))
         zstack_ants = ants.from_numpy(zstack, spacing=(*self.fixed.resolution,))
         # Get and apply rotation
         # _rot_transform = self.get_ants_rotation_transform()

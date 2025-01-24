@@ -43,6 +43,8 @@ class Stack(QtCore.QObject):
     def translation(self, value: Union[list, tuple, np.ndarray]):
         self._translation[:] = value
 
+        print(f'Set translation {self.translation}')
+
         self.translation_changed.emit()
 
     @property

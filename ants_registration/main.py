@@ -30,6 +30,7 @@ class Window(QMainWindow):
 
     dynamic_widgets: Dict[str, QWidget] = {}
     dynamic_buttons: Dict[str, QPushButton] = {}
+    pre_alignment_widget: widgets.PreAlignmentWidget = None
 
     def __init__(self, *args, **kwarg):
         QMainWindow.__init__(self, *args, **kwarg)
@@ -118,8 +119,8 @@ class Window(QMainWindow):
         self.tool_menu = QMenu('&Tools')
         self.menuBar().addMenu(self.tool_menu)
 
-        self.run_s2p_alignment = self.tool_menu.addAction('&Run s2p alignment', widgets.S2PAlignment.run)
-        self.run_s2p_alignment.setShortcut('Ctrl+Shift+a')
+        self.tool_pre_alignment = self.tool_menu.addAction('&Run pre alignment', self.run_pre_alignment)
+        self.tool_pre_alignment.setShortcut('Ctrl+Shift+a')
 
         # Add statusbar buttons
         self.dynamic_button_bar = QWidget()
@@ -207,6 +208,18 @@ class Window(QMainWindow):
         self.dynamic_button_bar.setEnabled(True)
         self.fixed_stack.setEnabled(True)
         self.moving_stack.setEnabled(True)
+
+    def run_pre_alignment(self):
+
+        moving_image = self.align_2d_widget.get_current_moving_image()
+        zcorrelations, xy_shifts = registration.run_pre_alignment(moving_image)
+
+        if self.pre_alignment_widget is not None:
+            self.pre_alignment_widget.close()
+
+        self.pre_alignment_widget = widgets.PreAlignmentWidget()
+
+        self.pre_alignment_widget.plot(zcorrelations, xy_shifts)
 
 
 class ControlPanel(QGroupBox):
