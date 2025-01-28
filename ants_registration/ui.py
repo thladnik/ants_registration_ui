@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import List
 
 from PySide6 import QtCore
@@ -45,6 +46,8 @@ class StackWidget(QGroupBox):
     def __init__(self, name: str, parent=None):
         QGroupBox.__init__(self, name, parent)
 
+        self.setAcceptDrops(True)
+
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
@@ -68,6 +71,16 @@ class StackWidget(QGroupBox):
         main_layout.addWidget(self.resolution)
 
         main_layout.addStretch()
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            self.path_changed.emit(url.path())
 
     def select_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, 'Select stack...', '', 'TIF Files (*.tif *.tiff)')

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
+from pathlib import Path, WindowsPath
 from typing import Any, Dict, Tuple, Union
 
 import numpy as np
@@ -153,6 +153,10 @@ class Stack(QtCore.QObject):
         print(f'Load file {file_path}')
 
         self.file_path = Path(file_path)
+
+        # For drag and drop operations, there's a leading slash on Windows systems, remove it:
+        if isinstance(self.file_path, WindowsPath):
+            self.file_path = Path(self.file_path.as_posix().lstrip('/'))
 
         if any([self.file_path.as_posix().lower().endswith(ext) for ext in ['.tif', '.tiff']]):
             self._load_tif()
