@@ -860,7 +860,8 @@ class PreAlignmentWidget(QWidget):
         xdim, ydim = registration.fixed.shape[:2]
         selected_idx = int(line.pos().x())
         xshift = (xdim - self.xy_shifts[selected_idx][0]) * registration.fixed.resolution[0]
-        yshift = (ydim - self.xy_shifts[selected_idx][1]) * registration.fixed.resolution[1]
+        # yshift = (ydim - self.xy_shifts[selected_idx][1]) * registration.fixed.resolution[1]
+        yshift = (self.xy_shifts[selected_idx][1] - ydim) * registration.fixed.resolution[1]
         zshift = registration.fixed.resolution[2] * selected_idx
 
         print(f'Finished alignment: {(xshift, yshift, zshift)}')
