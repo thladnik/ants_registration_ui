@@ -83,7 +83,7 @@ class StackWidget(QGroupBox):
             self.path_changed.emit(url.path())
 
     def select_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Select stack...', '', 'TIF Files (*.tif *.tiff)')
+        file_path, _ = QFileDialog.getOpenFileName(self, 'Select stack...', '', 'TIF Files (*.tif *.tiff *.TIF *.TIFF)')
         if not file_path:
             return
 
