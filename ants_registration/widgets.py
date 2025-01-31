@@ -270,6 +270,9 @@ class Align2DWidget(DynamicWidget):
 
     def update_transform(self):
 
+        if registration.fixed.file_path is None or registration.moving.file_path is None:
+            return
+
         scale = registration.fixed.resolution[0] / registration.moving.resolution[0]
         self.imv_fixed.imageItem.setScale(scale)
 
@@ -310,7 +313,6 @@ class Align2DWidget(DynamicWidget):
             apply_rotation(ev)
 
         QWidget.keyPressEvent(self, ev)
-
 
 
 class ShowAlignment2DWidget(DynamicWidget):
@@ -822,32 +824,35 @@ class PreAlignmentWidget(QWidget):
 
     def __init__(self):
         QWidget.__init__(self)
-        self.setMinimumSize(800, 150)
+        self.resize(600, 150)
         self.setWindowFlags(QtCore.Qt.WindowType.Window)
         self.show()
 
         self.setWindowTitle(f'suite2p pre-alignment')
         self.setLayout(QHBoxLayout())
 
+        # Add plot widget
         self.phase_corr_plot = pg.PlotWidget()
         self.layout().addWidget(self.phase_corr_plot)
+
+        # Add plot data item
+        self.plot_item: pg.PlotItem = self.phase_corr_plot.getPlotItem()
+        self.data_item = self.plot_item.plot([])
+
+        # Add vertical line
+        self.vline = pg.InfiniteLine(pos=0, movable=True)
+        self.vline.sigPositionChanged.connect(self.layer_line_changed)
+        self.plot_item.addItem(self.vline)
 
     def plot(self, zcorrelations, xyshifts):
 
         self.zcorrelations = zcorrelations
         self.xy_shifts = xyshifts
 
-        plot_item: pg.PlotItem = self.phase_corr_plot.getPlotItem()
-
-        plot_item.plot(self.zcorrelations, units='my')
-        plot_item.setAxisItems()
+        self.data_item.setData(range(len(self.zcorrelations)), self.zcorrelations)
 
         # Set translation based on best phase correlation
         best_corr_idx = np.argmax(self.zcorrelations)
-
-        self.vline = pg.InfiniteLine(pos=0, movable=True)
-        self.vline.sigPositionChanged.connect(self.layer_line_changed)
-        plot_item.addItem(self.vline)
 
         self.activateWindow()
         self.raise_()
@@ -860,7 +865,6 @@ class PreAlignmentWidget(QWidget):
         xdim, ydim = registration.fixed.shape[:2]
         selected_idx = int(line.pos().x())
         xshift = (xdim - self.xy_shifts[selected_idx][0]) * registration.fixed.resolution[0]
-        # yshift = (ydim - self.xy_shifts[selected_idx][1]) * registration.fixed.resolution[1]
         yshift = (self.xy_shifts[selected_idx][1] - ydim) * registration.fixed.resolution[1]
         zshift = registration.fixed.resolution[2] * selected_idx
 

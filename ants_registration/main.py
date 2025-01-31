@@ -49,21 +49,20 @@ class Window(QMainWindow):
 
         # Info panel
         self.info_panel = QWidget()
-        # self.info_panel.setContentsMargins(0, 0, 0, 0)
         info_layout = QHBoxLayout()
-        info_layout.setSpacing(0)
-        info_layout.setContentsMargins(0, 0, 0, 0)
+        # info_layout.setSpacing(10)
+        # info_layout.setContentsMargins(0, 0, 0, 0)
         self.info_panel.setLayout(info_layout)
         self.info_panel.setMinimumSize(1, 200)
         self.info_panel.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.Fixed)
         self.right_layout.addWidget(self.info_panel)
 
         # Add fixed stack widget
-        self.fixed_stack = StackWidget('Reference stack')
+        self.fixed_stack = StackWidget('Reference stack', parent=self.info_panel)
         info_layout.addWidget(self.fixed_stack)
 
         # Add moving stack widget
-        self.moving_stack = StackWidget('Moving stack')
+        self.moving_stack = StackWidget('Moving stack', parent=self.info_panel)
         info_layout.addWidget(self.moving_stack)
 
         # Create dynamic widgets
@@ -110,7 +109,7 @@ class Window(QMainWindow):
         self.tool_menu = QMenu('&Tools')
         self.menuBar().addMenu(self.tool_menu)
 
-        self.tool_pre_alignment = self.tool_menu.addAction('&Run pre alignment', self.run_pre_alignment)
+        self.tool_pre_alignment = self.tool_menu.addAction('&Run pre alignment for current layer', self.run_pre_alignment)
         self.tool_pre_alignment.setShortcut('Ctrl+Shift+a')
 
         # Add statusbar buttons
@@ -205,12 +204,17 @@ class Window(QMainWindow):
         moving_image = self.align_2d_widget.get_current_moving_image()
         zcorrelations, xy_shifts = registration.run_pre_alignment(moving_image)
 
+        if self.pre_alignment_widget is None:
+            self.pre_alignment_widget = widgets.PreAlignmentWidget()
+
+        self.pre_alignment_widget.plot(zcorrelations, xy_shifts)
+
+    def closeEvent(self, event):
+
         if self.pre_alignment_widget is not None:
             self.pre_alignment_widget.close()
 
-        self.pre_alignment_widget = widgets.PreAlignmentWidget()
-
-        self.pre_alignment_widget.plot(zcorrelations, xy_shifts)
+        event.accept()
 
 
 class ControlPanel(QGroupBox):

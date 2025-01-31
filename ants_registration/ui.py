@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import List
 
-from PySide6 import QtCore
+from PySide6 import QtCore, QtWidgets
 from PySide6.QtWidgets import *
 
 
@@ -48,8 +49,13 @@ class StackWidget(QGroupBox):
 
         self.setAcceptDrops(True)
 
+        self.setLayout(QHBoxLayout())
+
+        self.main_widget = QWidget()
+        self.layout().addWidget(self.main_widget)
+
         main_layout = QVBoxLayout()
-        self.setLayout(main_layout)
+        self.main_widget.setLayout(main_layout)
 
         self.file_selection = QWidget()
         file_selection_layout = QHBoxLayout()
@@ -72,15 +78,45 @@ class StackWidget(QGroupBox):
 
         main_layout.addStretch()
 
+        self.drop_widget = QWidget()
+        self.drop_widget.hide()
+        self.drop_widget.setLayout(QVBoxLayout())
+        self.drop_text = QLabel('')
+        self.drop_text.setStyleSheet('font-weight:bold;')
+        self.drop_text.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
+        self.drop_widget.layout().addWidget(self.drop_text)
+        self.layout().addWidget(self.drop_widget)
+
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
+            self.setFixedSize(self.size())
+            self.drop_text.setText('Drop file or folder here to load...')
+            self.main_widget.hide()
+            self.drop_widget.show()
             event.accept()
         else:
             event.ignore()
 
+    def dragLeaveEvent(self, event):
+        self.reset_widgets()
+        event.accept()
+
     def dropEvent(self, event):
+        self.drop_text.setText('Loading data...')
+
+        QtWidgets.QApplication.instance().processEvents()
+
         for url in event.mimeData().urls():
             self.path_changed.emit(url.path())
+
+        self.reset_widgets()
+
+    def reset_widgets(self):
+        self.main_widget.show()
+        self.drop_widget.hide()
+
+        self.setMaximumSize(9999, 9999)
+        self.setMinimumSize(0, 0)
 
     def select_file(self):
         file_path, _ = QFileDialog.getOpenFileName(self, 'Select stack...', '', 'TIF Files (*.tif *.tiff *.TIF *.TIFF)')

@@ -13,6 +13,7 @@ import ants
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy
+from tqdm import tqdm
 import yaml
 from PySide6 import QtCore
 
@@ -167,7 +168,7 @@ class Registration(QtCore.QObject):
         """Estimate rough z-alignment of suite2p's mean image to the fixed stack, using phase correlation
         """
 
-        print('Run pre alignment')
+        print('Run pre alignment for reference layers')
 
         def phase_correlations(ref: np.ndarray, im: np.ndarray) -> np.ndarray:
             """Phase correlation calculation
@@ -214,7 +215,7 @@ class Registration(QtCore.QObject):
 
         corrs = []
         xy = []
-        for i in range(zstack.shape[2]):
+        for i in tqdm(range(zstack.shape[2])):
             ref_image = np.pad(zstack[:, :, i], (0, padding))
 
             corrimg = phase_correlations(ref_image, moving_im_pad)
