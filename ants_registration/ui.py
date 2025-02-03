@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
+from pathlib import Path, WindowsPath
 from typing import List
 
 from PySide6 import QtCore, QtWidgets
@@ -46,9 +46,8 @@ class StackWidget(QGroupBox):
 
     def __init__(self, name: str, parent=None):
         QGroupBox.__init__(self, name, parent)
-
+        self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
         self.setAcceptDrops(True)
-
         self.setLayout(QHBoxLayout())
 
         self.main_widget = QWidget()
@@ -57,21 +56,29 @@ class StackWidget(QGroupBox):
         main_layout = QVBoxLayout()
         self.main_widget.setLayout(main_layout)
 
+        # Non-editable field to display the selected path
+        self.file_path_display = QLineEdit()
+        self.file_path_display.setReadOnly(True)
+        self.path_changed.connect(self.file_path_display.setText)
+        main_layout.addWidget(self.file_path_display)
+
+        # Add file selection options
         self.file_selection = QWidget()
         file_selection_layout = QHBoxLayout()
         self.file_selection.setLayout(file_selection_layout)
         main_layout.addWidget(self.file_selection)
-
-        # Non-editable field to display the selected file path
-        self.file_path_display = QLineEdit()
-        self.file_path_display.setReadOnly(True)
-        self.path_changed.connect(self.file_path_display.setText)
-        file_selection_layout.addWidget(self.file_path_display)
-
-        # Button to open file dialog
-        self.file_button = QPushButton('Select stack...')
+        self.file_button = QPushButton('Select file')
         self.file_button.clicked.connect(self.select_file)
         file_selection_layout.addWidget(self.file_button)
+        file_selection_layout.addWidget(QLabel('or'))
+        self.folder_button = QPushButton('Select folder')
+        self.folder_button.clicked.connect(self.select_folder)
+        file_selection_layout.addWidget(self.folder_button)
+        file_selection_layout.addWidget(QLabel('or'))
+        lbl_dragdrop = QLabel('drag and drop file/folder')
+        lbl_dragdrop.setStyleSheet('font-weight:bold;')
+        file_selection_layout.addWidget(lbl_dragdrop)
+        file_selection_layout.addStretch()
 
         self.resolution = StackResolution(self)
         main_layout.addWidget(self.resolution)
@@ -107,7 +114,7 @@ class StackWidget(QGroupBox):
         QtWidgets.QApplication.instance().processEvents()
 
         for url in event.mimeData().urls():
-            self.path_changed.emit(url.path())
+            self.new_path(url.path())
 
         self.reset_widgets()
 
@@ -119,53 +126,76 @@ class StackWidget(QGroupBox):
         self.setMinimumSize(0, 0)
 
     def select_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(self, 'Select stack...', '', 'TIF Files (*.tif *.tiff *.TIF *.TIFF)')
-        if not file_path:
+        path, _ = QFileDialog.getOpenFileName(self, 'Select stack...', '', 'TIF Files (*.tif *.tiff *.TIF *.TIFF)')
+        if not path:
             return
 
-        self.path_changed.emit(file_path)
+        self.new_path(path)
 
-    def select_suite2p_folder(self):
-        folder_path = QFileDialog.getExistingDirectory(self, 'Select suite2p folder...')
-        if not folder_path:
+    def select_folder(self):
+        path = QFileDialog.getExistingDirectory(self, 'Select folder...')
+        if not path:
             return
 
-        self.path_changed.emit(folder_path)
+        self.new_path(path)
+
+    def new_path(self, path: str):
+
+        path = Path(path)
+        print(path.as_posix())
+
+        # For drag and drop operations, there's a leading slash on Windows systems, remove it:
+        if isinstance(path, WindowsPath):
+            path = path.as_posix().lstrip('/')
+        else:
+            path = path.as_posix()
+
+        print('>', path)
+
+        self.path_changed.emit(path)
 
 
-class StackResolution(QWidget):
+class StackResolution(QGroupBox):
 
     changed = QtCore.Signal(dict)
 
     def __init__(self, parent=None):
-        QWidget.__init__(self, parent)
+        QGroupBox.__init__(self, 'Resolution', parent)
+        self.setSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Minimum)
+        self.setMinimumSize(150, 100)
+        self.setMaximumWidth(300)
 
-        main_layout = QHBoxLayout()
+        main_layout = QGridLayout()
         self.setLayout(main_layout)
 
         self.edit_fields = []
 
+        # X
+        self.x_label = QLabel('X')
+        main_layout.addWidget(self.x_label, 0, 0)
         self.x_edit = QLineEdit()
         self.edit_fields.append(self.x_edit)
-        self.x_label = QLabel('Res X [my]')
-        main_layout.addWidget(self.x_label)
         self.x_edit.editingFinished.connect(lambda: self.resolution_updated('x'))
-        main_layout.addWidget(self.x_edit)
-        self.y_edit = QLineEdit()
-        self.edit_fields.append(self.y_edit)
-        self.y_label = QLabel('Res Y [my]')
-        main_layout.addWidget(self.y_label)
-        self.y_edit.editingFinished.connect(lambda: self.resolution_updated('y'))
-        main_layout.addWidget(self.y_edit)
-        self.z_edit = QLineEdit()
-        self.edit_fields.append(self.z_edit)
-        self.z_label = QLabel('Res Z [my]')
-        main_layout.addWidget(self.z_label)
-        self.z_edit.editingFinished.connect(lambda: self.resolution_updated('z'))
-        main_layout.addWidget(self.z_edit)
+        main_layout.addWidget(self.x_edit, 0, 1)
+        # Make X^3 button
         self.cubic_btn = QPushButton('x^3')
         self.cubic_btn.clicked.connect(self.make_cubic)
-        main_layout.addWidget(self.cubic_btn)
+        main_layout.addWidget(self.cubic_btn, 0, 2)
+
+        # Y
+        self.y_label = QLabel('Y')
+        main_layout.addWidget(self.y_label, 1, 0)
+        self.y_edit = QLineEdit()
+        self.edit_fields.append(self.y_edit)
+        self.y_edit.editingFinished.connect(lambda: self.resolution_updated('y'))
+        main_layout.addWidget(self.y_edit, 1, 1)
+        # Z
+        self.z_label = QLabel('Z')
+        main_layout.addWidget(self.z_label, 2, 0)
+        self.z_edit = QLineEdit()
+        self.edit_fields.append(self.z_edit)
+        self.z_edit.editingFinished.connect(lambda: self.resolution_updated('z'))
+        main_layout.addWidget(self.z_edit, 2, 1)
 
     def set_resolution(self, *args: List[float]):
         for i, v in enumerate(args):

@@ -103,7 +103,7 @@ class Window(QMainWindow):
         self.file_open_moving = self.file_menu.addAction('&Open moving stack...', self.moving_stack.select_file)
         self.file_open_moving.setShortcut('Ctrl+m')
         self.file_open_s2p = self.file_menu.addAction('&Import suite2p layer as moving stack...',
-                                                      self.moving_stack.select_suite2p_folder)
+                                                      self.moving_stack.select_folder)
         self.file_open_s2p.setShortcut('Ctrl+Shift+s')
 
         self.tool_menu = QMenu('&Tools')
@@ -138,7 +138,7 @@ class Window(QMainWindow):
         """Set working directory to path containing the moving stack and attempt to load saved registration data
         """
 
-        working_dir = '/'.join(registration.moving.file_path.as_posix().split('/')[:-1])
+        working_dir = '/'.join(registration.moving.file_path.split('/')[:-1])
         print(f'Set working directory to {working_dir}')
         os.chdir(working_dir)
 
@@ -242,7 +242,7 @@ def main():
     np.set_printoptions(suppress=True)
 
     app = QApplication(sys.argv)
-    qdarktheme.setup_theme()
+    qdarktheme.setup_theme('dark')
     window = Window()
     window.show()
 

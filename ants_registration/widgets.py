@@ -98,8 +98,7 @@ class Align3DGLWidget(gl.GLViewWidget):
     def __init__(self, *args, **kwargs):
         gl.GLViewWidget.__init__(self, *args, **kwargs)
 
-        self.setBackgroundColor((30, 30, 30))
-        self.setMinimumSize(1000, 1000)
+        self.setBackgroundColor((0, 0, 0))
 
         # Add volumes
         # Init fixed volume
@@ -828,7 +827,7 @@ class PreAlignmentWidget(QWidget):
         self.setWindowFlags(QtCore.Qt.WindowType.Window)
         self.show()
 
-        self.setWindowTitle(f'suite2p pre-alignment')
+        self.setWindowTitle(f'Layer pre alignment')
         self.setLayout(QHBoxLayout())
 
         # Add plot widget

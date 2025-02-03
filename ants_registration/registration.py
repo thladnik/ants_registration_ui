@@ -43,8 +43,8 @@ class Registration(QtCore.QObject):
            (relative to the directory containing the moving stack)
         """
         # Create save path based on moving and fixed file paths
-        moving_name = self.moving.file_path.as_posix().split('/')[-1]
-        reference_name = self.fixed.file_path.as_posix().split('/')[-1]
+        moving_name = self.moving.file_path.split('/')[-1]
+        reference_name = self.fixed.file_path.split('/')[-1]
 
         # Combine and create
         path = '/'.join(['ants_registration', moving_name, reference_name])
