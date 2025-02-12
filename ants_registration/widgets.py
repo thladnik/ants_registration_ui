@@ -37,12 +37,20 @@ translation_axes = [
 
 rotation_keys = [
     Qt.Key.Key_Q,
-    Qt.Key.Key_E
+    Qt.Key.Key_E,
+    Qt.Key.Key_R,
+    Qt.Key.Key_F
 ]
 
 rotation_directions = [
-    -1,  # CCW
-    1  # CW
+    # (0, 0, -1),
+    # (0, 0, 1),
+    # (-1, 0, 0),
+    # (1, 0, 0)
+    1,
+    -1,
+    -1,
+    1
 ]
 
 
@@ -53,7 +61,10 @@ def apply_translation(ev):
 
 def apply_rotation(ev):
     _dir = rotation_directions[rotation_keys.index(ev.key())]
-    registration.moving.z_rotation = registration.moving.z_rotation + _dir * 1
+    if ev.key() in [Qt.Key.Key_Q, Qt.Key.Key_E]:
+        registration.moving.z_rotation = registration.moving.z_rotation + _dir * 1
+    else:
+        registration.moving.x_rotation = registration.moving.x_rotation + _dir * 1
 
 
 class Align3DWidget(DynamicWidget):
@@ -75,7 +86,8 @@ class Align3DWidget(DynamicWidget):
         W/A -> front/back\n
         A/D -> left/right\n
         X/C -> up/down\n
-        Q/E -> rotate left/right\n
+        R/F -> rotate X up/down\n
+        Q/E -> rotate Z left/right\n
         N/M -> lower/higher contrast
         """)
         self.controls_label.setStyleSheet('border: 2px solid gray;')

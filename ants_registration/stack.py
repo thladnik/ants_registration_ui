@@ -25,6 +25,7 @@ class Stack(QtCore.QObject):
         self.data = np.zeros((1, 1, 1))
         self.resolution = np.array([1., 1., 1.])
         self._translation = np.array([0., 0., 0.])
+        self._x_rotation: float = 0.
         self._z_rotation: float = 0.
         self.file_path: Union[str, None] = None
         self.metadata: Dict[str, Any] = {}
@@ -54,6 +55,20 @@ class Stack(QtCore.QObject):
     @z_rotation.setter
     def z_rotation(self, value: float):
         self._z_rotation = value
+
+        print(f'Set Z rotation to {value}')
+
+        self.rotation_changed.emit()
+
+    @property
+    def x_rotation(self) -> float:
+        return self._x_rotation
+
+    @x_rotation.setter
+    def x_rotation(self, value: float):
+        self._x_rotation = value
+
+        print(f'Set X rotation to {value}')
 
         self.rotation_changed.emit()
 
@@ -166,22 +181,28 @@ class Stack(QtCore.QObject):
 
         _scale = self.resolution
         c_rot = self.shape[:3] / 2 * _scale
-        _rot = np.deg2rad(self.z_rotation)
+        _rot_x = np.deg2rad(self.x_rotation)
+        _rot_z = np.deg2rad(self.z_rotation)
         _trans = self.translation
 
         T_to_orig = np.array([[1, 0, 0, -c_rot[0]],
                               [0, 1, 0, -c_rot[1]],
-                              [0, 0, 1, 0],
+                              [0, 0, 1, -c_rot[2]],
                               [0, 0, 0, 1]])
 
-        R = np.array([[np.cos(_rot), -np.sin(_rot), 0, 0],
-                      [np.sin(_rot), np.cos(_rot), 0, 0],
-                      [0, 0, 1, 0],
-                      [0, 0, 0, 1]])
+        Rx = np.array([[1, 0, 0, 0],
+                       [0, np.cos(_rot_x), -np.sin(_rot_x), 0],
+                       [0, np.sin(_rot_x), np.cos(_rot_x), 0],
+                       [0, 0, 0, 1]])
+
+        Rz = np.array([[np.cos(_rot_z), -np.sin(_rot_z), 0, 0],
+                       [np.sin(_rot_z), np.cos(_rot_z), 0, 0],
+                       [0, 0, 1, 0],
+                       [0, 0, 0, 1]])
 
         T_back = np.array([[1, 0, 0, c_rot[0]],
                            [0, 1, 0, c_rot[1]],
-                           [0, 0, 1, 0],
+                           [0, 0, 1, c_rot[2]],
                            [0, 0, 0, 1]])
 
         T = np.array([[1, 0, 0, _trans[0]],
@@ -194,6 +215,6 @@ class Stack(QtCore.QObject):
                       [0, 0, _scale[2], 0],
                       [0, 0, 0, 1]])
 
-        _mat = T @ T_back @ R @ T_to_orig @ S
+        _mat = T @ T_back @ Rx @ Rz @ T_to_orig @ S
 
         return pg.Transform3D(_mat)

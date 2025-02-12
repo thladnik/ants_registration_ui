@@ -80,7 +80,10 @@ class Registration(QtCore.QObject):
         fixed_shape = self.fixed.shape
 
         # Get rotation transform
-        tr_rot_ants = self.get_ants_rotation_transform()
+        tr_rot_x_ants = self.get_ants_x_rotation_transform()
+
+        # Get rotation transform
+        tr_rot_z_ants = self.get_ants_z_rotation_transform()
 
         # Create translation transform
         x_offset = (fixed_scale[0] * fixed_shape[0] - moving_scale[0] * moving_shape[0])
@@ -92,11 +95,30 @@ class Registration(QtCore.QObject):
         tr_trans_ants.set_parameters(T)
 
         # Combine transforms
-        tr_ants = ants.compose_ants_transforms([tr_trans_ants, tr_rot_ants])
+        tr_ants = ants.compose_ants_transforms([tr_trans_ants, tr_rot_x_ants, tr_rot_z_ants])
 
-        return [tr_ants, tr_trans_ants, tr_rot_ants]
+        return [tr_ants, tr_trans_ants, tr_rot_x_ants, tr_rot_z_ants]
 
-    def get_ants_rotation_transform(self):
+    def get_ants_x_rotation_transform(self):
+
+        _rot = np.deg2rad(self.moving.x_rotation)
+
+        moving_scale = self.moving.resolution
+        moving_shape = self.moving.shape
+
+        # Create rotation
+        c_rot = np.array([moving_shape[0] / 2, moving_shape[1] / 2, moving_shape[2] / 2])
+        R = np.array([[1, 0, 0, 0],
+                      [0, np.cos(_rot), -np.sin(_rot), 0],
+                      [0, np.sin(_rot), np.cos(_rot), 0]])
+
+        tr_rot_ants = ants.create_ants_transform(transform_type='AffineTransform')
+        tr_rot_ants.set_parameters(R)
+        tr_rot_ants.set_fixed_parameters(c_rot * moving_scale)
+
+        return tr_rot_ants
+
+    def get_ants_z_rotation_transform(self):
 
         _rot = -np.deg2rad(self.moving.z_rotation)
 
@@ -104,7 +126,7 @@ class Registration(QtCore.QObject):
         moving_shape = self.moving.shape
 
         # Create rotation
-        c_rot = np.array([moving_shape[0] / 2, moving_shape[1] / 2, 0.])
+        c_rot = np.array([moving_shape[0] / 2, moving_shape[1] / 2, moving_shape[2] / 2])
         R = np.array([[np.cos(_rot), -np.sin(_rot), 0, 0],
                       [np.sin(_rot), np.cos(_rot), 0, 0],
                       [0, 0, 1, 0]])
@@ -274,6 +296,7 @@ class Registration(QtCore.QObject):
                 'fixed_path': Path(os.path.relpath(self.fixed.file_path)).as_posix(),
                 'moving_resolution': [float(f) for f in self.moving.resolution],
                 'init_translation': [float(f) for f in self.moving.translation],
+                'init_x_rotation': float(self.moving.x_rotation),
                 'init_z_rotation': float(self.moving.z_rotation),
                 'registration_settings': settings}
 
