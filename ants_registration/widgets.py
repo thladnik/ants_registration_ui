@@ -232,6 +232,10 @@ class Align2DWidget(DynamicWidget):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
 
+        warn_label = QLabel('WARNING: 2D alignment only for simple cases. It does not implement rotations! For rotations use "Align 3D" -> "Show 2D alignment"')
+        warn_label.setStyleSheet('color:#FF0000;')
+        main_layout.addWidget(warn_label)
+
         # Add moving
         self.imv_mov = pg.ImageView(discreteTimeLine=True)
         main_layout.addWidget(self.imv_mov)
