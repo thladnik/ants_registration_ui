@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path, WindowsPath
+from pathlib import Path
 from typing import Any, Dict, Tuple, Union
 
 import numpy as np
@@ -9,7 +9,7 @@ import pyqtgraph as pg
 import scipy
 import tifffile
 import yaml
-from PySide6 import QtCore
+from pyqtgraph.Qt import QtCore
 
 
 class Stack(QtCore.QObject):

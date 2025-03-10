@@ -7,8 +7,7 @@ from typing import Any, Dict, List, Union
 import numpy as np
 import qdarktheme
 import yaml
-from PySide6.QtWidgets import *
-
+from pyqtgraph.Qt.QtWidgets import *
 from ants_registration import widgets
 from ants_registration.ui import StackWidget, DynamicWidget
 

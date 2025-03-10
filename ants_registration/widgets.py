@@ -8,10 +8,10 @@ import numpy as np
 import pandas as pd
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
+from pyqtgraph.Qt import QtCore, QtGui
+from pyqtgraph.Qt.QtCore import Qt
+from pyqtgraph.Qt.QtWidgets import *
 import yaml
-from PySide6 import QtCore, QtGui
-from PySide6.QtWidgets import *
-from PySide6.QtCore import Qt
 
 from ants_registration.ui import DynamicWidget
 from ants_registration.registration import registration

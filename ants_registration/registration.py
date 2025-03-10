@@ -2,20 +2,17 @@ from __future__ import annotations
 
 import multiprocessing
 import os
-import pickle
 import pprint
-import shutil
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Union
 
 import ants
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 from tqdm import tqdm
 import yaml
-from PySide6 import QtCore
+from pyqtgraph.Qt import QtCore
 
 from ants_registration.stack import Stack
 

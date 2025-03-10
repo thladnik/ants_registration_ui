@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import time
 from pathlib import Path, WindowsPath
 from typing import List
 
-from PySide6 import QtCore, QtWidgets
-from PySide6.QtWidgets import *
+from pyqtgraph.Qt import QtCore, QtWidgets
+from pyqtgraph.Qt.QtWidgets import *
 
 
 class IntSlider(QWidget):
