@@ -4,6 +4,7 @@ import multiprocessing
 import os
 import pprint
 import sys
+import threading
 from pathlib import Path
 from typing import Any, Dict, List, Union
 
@@ -149,13 +150,13 @@ class Registration(QtCore.QObject):
             tr_ants = ants.create_ants_transform()
 
         # Apply
-        raw_aligned_image = tr_ants.apply_to_image(moving_stack_ants, fixed_stack_ants)
+        raw_aligned_image = tr_ants.apply_to_image(moving_stack_ants, fixed_stack_ants, interpolation='nearestneighbor')
 
         # Create image
         image_data = np.concatenate(
-            (fixed_stack_ants.numpy()[:, :, :, np.newaxis],
-             raw_aligned_image.numpy()[:, :, :, np.newaxis],
-             np.zeros(fixed_stack_ants.shape)[:, :, :, np.newaxis]),
+            (fixed_stack_ants.numpy().astype(self.fixed.data.dtype)[:, :, :, np.newaxis],
+             raw_aligned_image.numpy().astype(self.moving.data.dtype)[:, :, :, np.newaxis],
+             np.zeros(fixed_stack_ants.shape, dtype=self.fixed.data.dtype)[:, :, :, np.newaxis]),
             axis=3
         )
 
@@ -166,18 +167,17 @@ class Registration(QtCore.QObject):
         # Apply transform
         fixed_stack_ants = ants.from_numpy(self.fixed.data, spacing=(*self.fixed.resolution,))
         moving_stack_ants = ants.from_numpy(self.moving.data, spacing=(*self.moving.resolution,))
-        warped_stack_ants = ants.apply_transforms(fixed_stack_ants, moving_stack_ants, [f'{self.save_path}/Composite.h5'])
+        warped_stack_ants = ants.apply_transforms(fixed_stack_ants, moving_stack_ants,
+                                                  [f'{self.save_path}/Composite.h5'],
+                                                  interpolator='nearestNeighbor')
 
-        fixed_stack = fixed_stack_ants.numpy().astype(float)
-        # fixed_stack = (fixed_stack - fixed_stack.min()) / (fixed_stack.max() - fixed_stack.min())
-
-        warped_stack = warped_stack_ants.numpy().astype(float)
-        # warped_stack = (warped_stack - warped_stack.min()) / (warped_stack.max() - warped_stack.min())
+        fixed_stack = fixed_stack_ants.numpy().astype(self.fixed.data.dtype)
+        warped_stack = warped_stack_ants.numpy().astype(self.moving.data.dtype)
 
         image_data = np.concatenate(
             (fixed_stack[:, :, :, np.newaxis],
              warped_stack[:, :, :, np.newaxis],
-             np.zeros(fixed_stack.shape)[:, :, :, np.newaxis]),
+             np.zeros(fixed_stack.shape, dtype=self.fixed.data.dtype)[:, :, :, np.newaxis]),
             axis=3
         )
 
@@ -299,6 +299,8 @@ class Registration(QtCore.QObject):
 
         yaml.safe_dump(meta, open(f'{self.save_path}/metadata.yaml', 'w'))
 
+        # result = ants.registration(fixed_stack_ants, moving_stack_ants, **settings)
+
         # Run registration
         proc = multiprocessing.Process(target=run_ants_registration,
                                        name=f'ANTS registration run',
@@ -311,39 +313,87 @@ class Registration(QtCore.QObject):
 
 
 def run_ants_registration(save_path: str, *args, **kwargs):
-    with ANTsLog(f'{save_path}/registration.log') as log:
+    # result = ants.registration(*args, **kwargs)
+    # TODO: using ANTsLog causes the call to ants.registration to fail when using CMD call "antsui"
+    # with ANTsLog(f'{save_path}/registration.log') as log:
+
+    with open(f'{save_path}/registration.log', 'w') as sys.stdout:
         # Run ANTS registration
         result = ants.registration(*args, **kwargs)
         pprint.pprint(result)
 
 
-class ANTsLog(object):
-    """
-    Simplified class after PichardRarker's solution, that
-    Re-directs the ANTs verbose output to a textfile
-    Method derived from Maximilian Hoffman's solution:
-    https://github.com/ANTsX/ANTsPy/issues/130
-    """
 
-    def __init__(self, log_fpath):
-        self.log_fpath = log_fpath
+# class ANTsLog(object):
+#     """
+#     Re-directs the ANTs verbose output to a textfile
+#     Method derived from Maximilian Hoffman's solution:
+#     https://github.com/ANTsX/ANTsPy/issues/130
+#     """
+#
+#     def __init__(self, log_fpath):
+#         self.log_fpath = log_fpath
+#         self.redirect()
+#
+#     def redirect(self):
+#         # get file descriptor to __stdout__ (__stdout__ used instead of stdout,
+#         # because JupyterLab modifies stdout)
+#         self.orig_stdout_fd = sys.__stdout__.fileno()
+#         # Duplicate file descriptor to __stdout__
+#         self.saved_stdout_fd = os.dup(self.orig_stdout_fd)
+#         # create logfile and redirect __stdout__
+#         # Log should be unique for each unique registration,
+#         # so file is always newly-created
+#         self.log = open(self.log_fpath, "wb")
+#         os.dup2(self.log.fileno(), self.orig_stdout_fd)
+#
+#     def revert(self):
+#         """
+#         Put everything back as it was
+#         """
+#         # Close log
+#         self.log.close()
+#         # reset __stdout__
+#         os.dup2(self.saved_stdout_fd, self.orig_stdout_fd)
+#
+#     def __enter__(self):
+#         # enter method added so clas can be used
+#         # with context manager
+#         return self
+#
+#     def __exit__(self, exc_type, exc_val, exc_tb):
+#         # exit method added so clas can be used
+#         # with context manager
+#         self.revert()
 
-        # get file descriptor to __stdout__ (__stdout__ used instead of stdout)
-        self.original_stdout = sys.__stdout__.fileno()
 
-        # Duplicate file descriptor to __stdout__
-        self.saved_stdout = os.dup(self.original_stdout)
-
-        self.log_file = open(self.log_fpath, "wb")
-        os.dup2(self.log_file.fileno(), self.original_stdout)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.log_file.close()
-        # reset __stdout__
-        os.dup2(self.saved_stdout, self.original_stdout)
+# class ANTsLog(object):
+#     """
+#     Simplified class after PichardRarker's solution, that
+#     Re-directs the ANTs verbose output to a textfile
+#     Method derived from Maximilian Hoffman's solution:
+#     https://github.com/ANTsX/ANTsPy/issues/130
+#     """
+#
+#     def __init__(self, log_fpath):
+#         self.log_fpath = log_fpath
+#
+#         # get file descriptor to __stdout__ (__stdout__ used instead of stdout)
+#         self.original_stdout = sys.__stdout__.fileno()
+#
+#         # Duplicate file descriptor to __stdout__
+#         self.saved_stdout = os.dup(self.original_stdout)
+#
+#         self.log_file = open(self.log_fpath, "wb")
+#         os.dup2(self.log_file.fileno(), self.original_stdout)
+#
+#     def __enter__(self):
+#         return self
+#
+#     def __exit__(self, exc_type, exc_val, exc_tb):
+#         self.log_file.close()
+#         # reset __stdout__
+#         os.dup2(self.saved_stdout, self.original_stdout)
 
 
 # Default settings

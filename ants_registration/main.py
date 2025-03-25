@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Union
 
 import numpy as np
 import qdarktheme
+import tifffile
 import yaml
 from pyqtgraph.Qt.QtWidgets import *
 from ants_registration import widgets
@@ -104,6 +105,8 @@ class Window(QMainWindow):
         self.file_open_s2p = self.file_menu.addAction('&Import suite2p layer as moving stack...',
                                                       self.moving_stack.select_folder)
         self.file_open_s2p.setShortcut('Ctrl+Shift+s')
+        self.file_export_aligned = self.file_menu.addAction('&Export aligned stack...', self.export_aligned_stack)
+        self.file_export_reg = self.file_menu.addAction('&Export registered stack...', self.export_reg_stack)
 
         self.tool_menu = QMenu('&Tools')
         self.menuBar().addMenu(self.tool_menu)
@@ -208,6 +211,31 @@ class Window(QMainWindow):
             self.pre_alignment_widget = widgets.PreAlignmentWidget()
 
         self.pre_alignment_widget.plot(zcorrelations, xy_shifts)
+
+    def export_aligned_stack(self):
+
+        path, _ = QFileDialog.getSaveFileName(self, 'Save stack...', '', 'TIF Files (*.tif *.tiff *.TIF *.TIFF)')
+        if not path:
+            return
+
+        # Save stack to file
+        print(f'Save aligned stack to file {path}')
+        stack = registration.get_alignment_rgb_stack()
+        tifffile.imwrite(path, np.swapaxes(stack, 0, 2))
+        print('Stack saved')
+
+    def export_reg_stack(self):
+
+        path, _ = QFileDialog.getSaveFileName(self, 'Save stack...', '', 'TIF Files (*.tif *.tiff *.TIF *.TIFF)')
+
+        if path is None:
+            return
+
+        # Save stack to file
+        print(f'Save registered stack to file {path}')
+        stack = registration.get_registered_rgb_stack()
+        tifffile.imwrite(path, np.swapaxes(stack, 0, 2))
+        print('Stack saved')
 
     def closeEvent(self, event):
 
