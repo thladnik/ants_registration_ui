@@ -270,12 +270,14 @@ class Registration(QtCore.QObject):
         if transforms is None:
             init_transforms = None
         else:
-            trans_path = f'{self.save_path}/init_rot.mat'
+            trans_path = f'{self.save_path}/init_trans.mat'
             ants.write_transform(transforms[1], trans_path)
-            rot_path = f'{self.save_path}/init_trans.mat'
-            ants.write_transform(transforms[2], rot_path)
+            rot_x_path = f'{self.save_path}/init_rot_x.mat'
+            ants.write_transform(transforms[2], rot_x_path)
+            rot_z_path = f'{self.save_path}/init_rot_z.mat'
+            ants.write_transform(transforms[3], rot_z_path)
 
-            init_transforms = [trans_path, rot_path]
+            init_transforms = [trans_path, rot_x_path, rot_z_path]
 
         # Update settings
         settings['initial_transform'] = init_transforms
