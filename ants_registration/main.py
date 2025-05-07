@@ -162,6 +162,7 @@ class Window(QMainWindow):
         self.moving_stack.resolution.set_resolution(*meta.get('moving_resolution', (1., 1., 1.)))
         registration.moving.translation = meta.get('init_translation', (0., 0., 0.))
         registration.moving.x_rotation = meta.get('init_x_rotation', 0.)
+        registration.moving.y_rotation = meta.get('init_y_rotation', 0.)
         registration.moving.z_rotation = meta.get('init_z_rotation', 0.)
 
     def add_dynamic_widget(self, name: str, widget: DynamicWidget, selected: bool = False):

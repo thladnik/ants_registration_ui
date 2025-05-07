@@ -39,7 +39,9 @@ rotation_keys = [
     Qt.Key.Key_Q,
     Qt.Key.Key_E,
     Qt.Key.Key_R,
-    Qt.Key.Key_F
+    Qt.Key.Key_F,
+    Qt.Key.Key_T,
+    Qt.Key.Key_G
 ]
 
 rotation_directions = [
@@ -49,6 +51,8 @@ rotation_directions = [
     # (1, 0, 0)
     1,
     -1,
+    -1,
+    1,
     -1,
     1
 ]
@@ -61,10 +65,12 @@ def apply_translation(ev):
 
 def apply_rotation(ev):
     _dir = rotation_directions[rotation_keys.index(ev.key())]
-    if ev.key() in [Qt.Key.Key_Q, Qt.Key.Key_E]:
-        registration.moving.z_rotation = registration.moving.z_rotation + _dir * 1
-    else:
+    if ev.key() in [Qt.Key.Key_R, Qt.Key.Key_F]:
         registration.moving.x_rotation = registration.moving.x_rotation + _dir * 1
+    elif ev.key() in [Qt.Key.Key_T, Qt.Key.Key_G]:
+        registration.moving.y_rotation = registration.moving.y_rotation + _dir * 1
+    else:
+        registration.moving.z_rotation = registration.moving.z_rotation + _dir * 1
 
 
 class Align3DWidget(DynamicWidget):

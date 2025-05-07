@@ -81,6 +81,9 @@ class Registration(QtCore.QObject):
         tr_rot_x_ants = self.get_ants_x_rotation_transform()
 
         # Get rotation transform
+        tr_rot_y_ants = self.get_ants_y_rotation_transform()
+
+        # Get rotation transform
         tr_rot_z_ants = self.get_ants_z_rotation_transform()
 
         # Create translation transform
@@ -93,9 +96,9 @@ class Registration(QtCore.QObject):
         tr_trans_ants.set_parameters(T)
 
         # Combine transforms
-        tr_ants = ants.compose_ants_transforms([tr_trans_ants, tr_rot_x_ants, tr_rot_z_ants])
+        tr_ants = ants.compose_ants_transforms([tr_trans_ants, tr_rot_x_ants, tr_rot_y_ants, tr_rot_z_ants])
 
-        return [tr_ants, tr_trans_ants, tr_rot_x_ants, tr_rot_z_ants]
+        return [tr_ants, tr_trans_ants, tr_rot_x_ants, tr_rot_y_ants, tr_rot_z_ants]
 
     def get_ants_x_rotation_transform(self):
 
@@ -109,6 +112,25 @@ class Registration(QtCore.QObject):
         R = np.array([[1, 0, 0, 0],
                       [0, np.cos(_rot), -np.sin(_rot), 0],
                       [0, np.sin(_rot), np.cos(_rot), 0]])
+
+        tr_rot_ants = ants.create_ants_transform(transform_type='AffineTransform')
+        tr_rot_ants.set_parameters(R)
+        tr_rot_ants.set_fixed_parameters(c_rot * moving_scale)
+
+        return tr_rot_ants
+
+    def get_ants_y_rotation_transform(self):
+
+        _rot = np.deg2rad(self.moving.y_rotation)
+
+        moving_scale = self.moving.resolution
+        moving_shape = self.moving.shape
+
+        # Create rotation
+        c_rot = np.array([moving_shape[0] / 2, moving_shape[1] / 2, moving_shape[2] / 2])
+        R = np.array([[np.cos(_rot), 0, np.sin(_rot), 0],
+                      [0, 1, 0, 0],
+                      [-np.sin(_rot), 0, np.cos(_rot), 0]])
 
         tr_rot_ants = ants.create_ants_transform(transform_type='AffineTransform')
         tr_rot_ants.set_parameters(R)
@@ -274,10 +296,12 @@ class Registration(QtCore.QObject):
             ants.write_transform(transforms[1], trans_path)
             rot_x_path = f'{self.save_path}/init_rot_x.mat'
             ants.write_transform(transforms[2], rot_x_path)
+            rot_y_path = f'{self.save_path}/init_rot_y.mat'
+            ants.write_transform(transforms[3], rot_y_path)
             rot_z_path = f'{self.save_path}/init_rot_z.mat'
-            ants.write_transform(transforms[3], rot_z_path)
+            ants.write_transform(transforms[4], rot_z_path)
 
-            init_transforms = [trans_path, rot_x_path, rot_z_path]
+            init_transforms = [trans_path, rot_x_path, rot_y_path, rot_z_path]
 
         # Update settings
         settings['initial_transform'] = init_transforms
@@ -296,6 +320,7 @@ class Registration(QtCore.QObject):
                 'moving_resolution': [float(f) for f in self.moving.resolution],
                 'init_translation': [float(f) for f in self.moving.translation],
                 'init_x_rotation': float(self.moving.x_rotation),
+                'init_y_rotation': float(self.moving.y_rotation),
                 'init_z_rotation': float(self.moving.z_rotation),
                 'registration_settings': settings}
 

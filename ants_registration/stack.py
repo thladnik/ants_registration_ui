@@ -26,6 +26,7 @@ class Stack(QtCore.QObject):
         self.resolution = np.array([1., 1., 1.])
         self._translation = np.array([0., 0., 0.])
         self._x_rotation: float = 0.
+        self._y_rotation: float = 0.
         self._z_rotation: float = 0.
         self.file_path: Union[str, None] = None
         self.metadata: Dict[str, Any] = {}
@@ -49,18 +50,6 @@ class Stack(QtCore.QObject):
         self.translation_changed.emit()
 
     @property
-    def z_rotation(self) -> float:
-        return self._z_rotation
-
-    @z_rotation.setter
-    def z_rotation(self, value: float):
-        self._z_rotation = value
-
-        print(f'Set Z rotation to {value}')
-
-        self.rotation_changed.emit()
-
-    @property
     def x_rotation(self) -> float:
         return self._x_rotation
 
@@ -69,6 +58,30 @@ class Stack(QtCore.QObject):
         self._x_rotation = value
 
         print(f'Set X rotation to {value}')
+
+        self.rotation_changed.emit()
+
+    @property
+    def y_rotation(self) -> float:
+        return self._y_rotation
+
+    @y_rotation.setter
+    def y_rotation(self, value: float):
+        self._y_rotation = value
+
+        print(f'Set Y rotation to {value}')
+
+        self.rotation_changed.emit()
+
+    @property
+    def z_rotation(self) -> float:
+        return self._z_rotation
+
+    @z_rotation.setter
+    def z_rotation(self, value: float):
+        self._z_rotation = value
+
+        print(f'Set Z rotation to {value}')
 
         self.rotation_changed.emit()
 
@@ -100,6 +113,8 @@ class Stack(QtCore.QObject):
 
         # Reset translation and rotation
         self.translation = [0, 0, 0]
+        self.x_rotation = 0
+        self.y_rotation = 0
         self.z_rotation = 0
 
         # Emit
@@ -182,6 +197,7 @@ class Stack(QtCore.QObject):
         _scale = self.resolution
         c_rot = self.shape[:3] / 2 * _scale
         _rot_x = np.deg2rad(self.x_rotation)
+        _rot_y = np.deg2rad(self.y_rotation)
         _rot_z = np.deg2rad(self.z_rotation)
         _trans = self.translation
 
@@ -193,6 +209,11 @@ class Stack(QtCore.QObject):
         Rx = np.array([[1, 0, 0, 0],
                        [0, np.cos(_rot_x), -np.sin(_rot_x), 0],
                        [0, np.sin(_rot_x), np.cos(_rot_x), 0],
+                       [0, 0, 0, 1]])
+
+        Ry = np.array([[np.cos(_rot_y), 0, np.sin(_rot_y), 0],
+                      [0, 1, 0, 0],
+                      [-np.sin(_rot_y), 0, np.cos(_rot_y), 0],
                        [0, 0, 0, 1]])
 
         Rz = np.array([[np.cos(_rot_z), -np.sin(_rot_z), 0, 0],
@@ -215,6 +236,6 @@ class Stack(QtCore.QObject):
                       [0, 0, _scale[2], 0],
                       [0, 0, 0, 1]])
 
-        _mat = T @ T_back @ Rx @ Rz @ T_to_orig @ S
+        _mat = T @ T_back @ Rx @ Ry @ Rz @ T_to_orig @ S
 
         return pg.Transform3D(_mat)
