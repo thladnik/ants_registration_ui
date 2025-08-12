@@ -162,7 +162,7 @@ class Stack(QtCore.QObject):
     def _load_suite2p(self):
 
         # Load layer mean image
-        ops = np.load(os.path.join(self.file_path, 'plane0', 'ops.npy'), allow_pickle=True).item()
+        ops = np.load(os.path.join(self.file_path, 'ops.npy'), allow_pickle=True).item()
         im_slice = ops['meanImg'].T
         im_slice[:10] = 0
         im_slice[-10:] = 0
@@ -184,10 +184,12 @@ class Stack(QtCore.QObject):
 
         self.file_path = file_path
 
+        file_parts = file_path.split('/')
+
         if any([self.file_path.lower().endswith(ext) for ext in ['.tif', '.tiff']]):
             self._load_tif()
 
-        elif self.file_path.endswith('suite2p'):
+        elif file_parts[-2] == 'suite2p':
             self._load_suite2p()
 
         self.changed.emit()
