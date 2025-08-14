@@ -763,7 +763,7 @@ class MapPointsWidget(DynamicWidget):
         # Get data on suite2p moving stack (slice)
         metadata = yaml.safe_load(open(f'{registration_list[0]}/metadata.yaml', 'r'))
         src_resolution = metadata['moving_resolution']
-        stats = np.load(f'{path_list[0][0]}/stat.npy', allow_pickle=True)
+        stats = np.load(f'{path_list[0][0]}/{path_list[0][1]}/stat.npy', allow_pickle=True)
 
         # Build coordinates on source reference frame
         roi_coords = np.array([[s['med'][0], s['med'][1], 6] for s in stats]) * np.array(src_resolution)
