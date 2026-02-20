@@ -121,7 +121,7 @@ class Registration(QtCore.QObject):
 
     def get_ants_y_rotation_transform(self):
 
-        _rot = np.deg2rad(self.moving.y_rotation)
+        _rot = -np.deg2rad(self.moving.y_rotation)
 
         moving_scale = self.moving.resolution
         moving_shape = self.moving.shape
